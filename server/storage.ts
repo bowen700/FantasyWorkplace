@@ -1,38 +1,272 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+// Storage interface implementing database operations for Fantasy Workplace
+import {
+  users,
+  seasons,
+  kpis,
+  kpiData,
+  matchups,
+  badges,
+  userBadges,
+  aiCoachConversations,
+  type User,
+  type UpsertUser,
+  type Season,
+  type InsertSeason,
+  type Kpi,
+  type InsertKpi,
+  type KpiData,
+  type InsertKpiData,
+  type Matchup,
+  type InsertMatchup,
+  type Badge,
+  type InsertBadge,
+  type UserBadge,
+  type InsertUserBadge,
+  type AiCoachConversation,
+  type InsertAiCoachConversation,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (IMPORTANT: mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+
+  // Season operations
+  getActiveSeason(): Promise<Season | undefined>;
+  createSeason(season: InsertSeason): Promise<Season>;
+  updateSeason(id: string, data: Partial<Season>): Promise<Season>;
+
+  // KPI operations
+  getAllKpis(): Promise<Kpi[]>;
+  getKpi(id: string): Promise<Kpi | undefined>;
+  createKpi(kpi: InsertKpi): Promise<Kpi>;
+  updateKpi(id: string, data: Partial<Kpi>): Promise<Kpi>;
+  deleteKpi(id: string): Promise<void>;
+
+  // KPI Data operations
+  getKpiDataByUserAndWeek(userId: string, seasonId: string, week: number): Promise<KpiData[]>;
+  bulkInsertKpiData(data: InsertKpiData[]): Promise<KpiData[]>;
+
+  // Matchup operations
+  getMatchupsByWeek(seasonId: string, week: number): Promise<Matchup[]>;
+  getRecentMatchupsByUser(userId: string, seasonId: string, limit: number): Promise<Matchup[]>;
+  createMatchup(matchup: InsertMatchup): Promise<Matchup>;
+  updateMatchup(id: string, data: Partial<Matchup>): Promise<Matchup>;
+  bulkCreateMatchups(matchups: InsertMatchup[]): Promise<Matchup[]>;
+
+  // Badge operations
+  getAllBadges(): Promise<Badge[]>;
+  createBadge(badge: InsertBadge): Promise<Badge>;
+  getUserBadges(userId: string): Promise<UserBadge[]>;
+  awardBadge(userBadge: InsertUserBadge): Promise<UserBadge>;
+
+  // AI Coach operations
+  getConversationHistory(userId: string, seasonId: string): Promise<AiCoachConversation[]>;
+  saveConversation(conversation: InsertAiCoachConversation): Promise<AiCoachConversation>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  // Season operations
+  async getActiveSeason(): Promise<Season | undefined> {
+    const [season] = await db
+      .select()
+      .from(seasons)
+      .where(eq(seasons.isActive, true))
+      .orderBy(desc(seasons.createdAt))
+      .limit(1);
+    return season;
+  }
+
+  async createSeason(seasonData: InsertSeason): Promise<Season> {
+    const [season] = await db.insert(seasons).values(seasonData).returning();
+    return season;
+  }
+
+  async updateSeason(id: string, data: Partial<Season>): Promise<Season> {
+    const [season] = await db
+      .update(seasons)
+      .set(data)
+      .where(eq(seasons.id, id))
+      .returning();
+    return season;
+  }
+
+  // KPI operations
+  async getAllKpis(): Promise<Kpi[]> {
+    return await db.select().from(kpis).orderBy(kpis.displayOrder);
+  }
+
+  async getKpi(id: string): Promise<Kpi | undefined> {
+    const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id));
+    return kpi;
+  }
+
+  async createKpi(kpiData: InsertKpi): Promise<Kpi> {
+    const [kpi] = await db.insert(kpis).values(kpiData).returning();
+    return kpi;
+  }
+
+  async updateKpi(id: string, data: Partial<Kpi>): Promise<Kpi> {
+    const [kpi] = await db
+      .update(kpis)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(kpis.id, id))
+      .returning();
+    return kpi;
+  }
+
+  async deleteKpi(id: string): Promise<void> {
+    await db.delete(kpis).where(eq(kpis.id, id));
+  }
+
+  // KPI Data operations
+  async getKpiDataByUserAndWeek(userId: string, seasonId: string, week: number): Promise<KpiData[]> {
+    return await db
+      .select()
+      .from(kpiData)
+      .where(
+        and(
+          eq(kpiData.userId, userId),
+          eq(kpiData.seasonId, seasonId),
+          eq(kpiData.week, week)
+        )
+      );
+  }
+
+  async bulkInsertKpiData(data: InsertKpiData[]): Promise<KpiData[]> {
+    if (data.length === 0) return [];
+    
+    return await db
+      .insert(kpiData)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [kpiData.userId, kpiData.kpiId, kpiData.seasonId, kpiData.week],
+        set: {
+          value: sql`EXCLUDED.value`,
+          submittedAt: new Date(),
+        },
+      })
+      .returning();
+  }
+
+  // Matchup operations
+  async getMatchupsByWeek(seasonId: string, week: number): Promise<Matchup[]> {
+    return await db
+      .select()
+      .from(matchups)
+      .where(and(eq(matchups.seasonId, seasonId), eq(matchups.week, week)));
+  }
+
+  async getRecentMatchupsByUser(userId: string, seasonId: string, limit: number): Promise<Matchup[]> {
+    return await db
+      .select()
+      .from(matchups)
+      .where(
+        and(
+          eq(matchups.seasonId, seasonId),
+          sql`(${matchups.player1Id} = ${userId} OR ${matchups.player2Id} = ${userId})`
+        )
+      )
+      .orderBy(desc(matchups.week))
+      .limit(limit);
+  }
+
+  async createMatchup(matchupData: InsertMatchup): Promise<Matchup> {
+    const [matchup] = await db.insert(matchups).values(matchupData).returning();
+    return matchup;
+  }
+
+  async updateMatchup(id: string, data: Partial<Matchup>): Promise<Matchup> {
+    const [matchup] = await db
+      .update(matchups)
+      .set(data)
+      .where(eq(matchups.id, id))
+      .returning();
+    return matchup;
+  }
+
+  async bulkCreateMatchups(matchupsData: InsertMatchup[]): Promise<Matchup[]> {
+    if (matchupsData.length === 0) return [];
+    return await db.insert(matchups).values(matchupsData).returning();
+  }
+
+  // Badge operations
+  async getAllBadges(): Promise<Badge[]> {
+    return await db.select().from(badges);
+  }
+
+  async createBadge(badgeData: InsertBadge): Promise<Badge> {
+    const [badge] = await db.insert(badges).values(badgeData).returning();
+    return badge;
+  }
+
+  async getUserBadges(userId: string): Promise<UserBadge[]> {
+    return await db
+      .select()
+      .from(userBadges)
+      .where(eq(userBadges.userId, userId))
+      .orderBy(desc(userBadges.earnedAt));
+  }
+
+  async awardBadge(userBadgeData: InsertUserBadge): Promise<UserBadge> {
+    const [userBadge] = await db
+      .insert(userBadges)
+      .values(userBadgeData)
+      .onConflictDoNothing()
+      .returning();
+    return userBadge;
+  }
+
+  // AI Coach operations
+  async getConversationHistory(userId: string, seasonId: string): Promise<AiCoachConversation[]> {
+    return await db
+      .select()
+      .from(aiCoachConversations)
+      .where(
+        and(
+          eq(aiCoachConversations.userId, userId),
+          eq(aiCoachConversations.seasonId, seasonId)
+        )
+      )
+      .orderBy(aiCoachConversations.createdAt)
+      .limit(50);
+  }
+
+  async saveConversation(conversationData: InsertAiCoachConversation): Promise<AiCoachConversation> {
+    const [conversation] = await db
+      .insert(aiCoachConversations)
+      .values(conversationData)
+      .returning();
+    return conversation;
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
