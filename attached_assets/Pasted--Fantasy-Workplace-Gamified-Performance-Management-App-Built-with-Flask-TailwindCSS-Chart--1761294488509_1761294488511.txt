@@ -1,0 +1,111 @@
+🎮 Fantasy Workplace — Gamified Performance Management App
+
+Built with: Flask + TailwindCSS + Chart.js + Replit DB (prototype)
+By: Bowen Oswald
+
+🧠 Overview
+
+Fantasy Workplace turns employee performance management into a friendly, gamified competition. Each week, participants go head-to-head in matchups based on key performance indicators (KPIs) selected by the admin.
+At the end of the regular season (about 10 weeks), the top performers advance to a 4-week playoff tournament—just like fantasy sports.
+
+The app makes performance feedback fun, motivating, and transparent while maintaining fairness and data integrity.
+
+🧩 Core Features
+
+Admin Tools
+
+Dynamic KPI selection panel to add, remove, or weight KPIs for scoring
+
+Weekly matchup scheduler that automatically pairs participants
+
+Real-time leaderboard dashboard with filters (by department, week, or overall)
+
+Engagement and performance analytics visualized with Chart.js
+
+Secure role-based access via Flask-Login
+
+User Features
+
+Upload KPI data (manually or through a file)
+
+View weekly matchup results and season standings
+
+Earn badges and see personal progress over time
+
+Receive “AI Coach” feedback using the OpenAI API to improve KPI performance
+
+⚙️ Technical Architecture
+
+Frontend
+
+Jinja2 templates with TailwindCSS for responsive design
+
+Chart.js for visual analytics
+
+Backend
+
+Flask routes: /upload, /dashboard, /matchup, /admin
+
+KPI logic engine to calculate scores and matchup results
+
+OpenAI API for KPI parsing and motivational insights
+
+Database
+
+Replit DB for prototype phase, scalable to PostgreSQL for production
+
+Authentication
+
+Flask-Login with bcrypt password hashing
+
+Role types: Employee, Admin, CIO
+
+Privacy & Governance
+
+Data retained for 5 years, with automated deletion scripts
+
+Leaderboards require minimum group sizes (no leaderboard if n < 3)
+
+Participation is voluntary; app data will not be used for HR promotion or termination decisions
+
+🏆 Season Structure
+
+Weeks 1–10: Head-to-head matchups between participants
+
+Weeks 11–14: Playoff tournament for top performers
+
+Scoring: Weighted sum of admin-selected KPIs → weekly “Fantasy Score”
+
+🚀 Setup Instructions
+
+Create a new Flask project in Replit.
+
+Add the following dependencies in requirements.txt:
+flask, flask-login, bcrypt, pandas, chart.js, openai, tailwindcss
+
+Initialize your Flask app structure with folders: /static, /templates, and core files such as app.py, db.py, and models.py.
+
+Create environment variables in Replit:
+OPENAI_API_KEY = “your-key-here”
+ADMIN_EMAIL = “admin@example.com
+”
+
+Run the app and log in as admin to configure KPIs and start the first season.
+
+🧪 MVP Goals
+
+✅ Admin can select and adjust KPIs at any time
+✅ Users can upload their KPI data
+✅ App automatically generates weekly matchups and scores
+✅ Leaderboard and playoff system function as expected
+✅ Dashboard visualizes KPI trends using Chart.js
+
+🛡️ Future Enhancements
+
+Integrate Slack or email notifications for weekly matchups
+
+AI-based KPI recommendations based on role or performance history
+
+Enable team competitions in addition to individual ones
+
+Sync with HRIS or productivity tools for automatic KPI imports
