@@ -56,6 +56,7 @@ export interface IStorage {
   createMatchup(matchup: InsertMatchup): Promise<Matchup>;
   updateMatchup(id: string, data: Partial<Matchup>): Promise<Matchup>;
   bulkCreateMatchups(matchups: InsertMatchup[]): Promise<Matchup[]>;
+  deleteMatchupsByWeek(seasonId: string, week: number): Promise<void>;
 
   // Badge operations
   getAllBadges(): Promise<Badge[]>;
@@ -216,6 +217,12 @@ export class DatabaseStorage implements IStorage {
   async bulkCreateMatchups(matchupsData: InsertMatchup[]): Promise<Matchup[]> {
     if (matchupsData.length === 0) return [];
     return await db.insert(matchups).values(matchupsData).returning();
+  }
+
+  async deleteMatchupsByWeek(seasonId: string, week: number): Promise<void> {
+    await db
+      .delete(matchups)
+      .where(and(eq(matchups.seasonId, seasonId), eq(matchups.week, week)));
   }
 
   // Badge operations

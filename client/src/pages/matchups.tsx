@@ -23,9 +23,11 @@ export default function Matchups() {
     queryKey: ["/api/seasons/active"],
   });
 
+  const weekKey = selectedWeek === "current" ? season?.currentWeek?.toString() : selectedWeek;
+
   const { data: matchups, isLoading } = useQuery<MatchupWithPlayers[]>({
-    queryKey: ["/api/matchups", selectedWeek === "current" ? season?.currentWeek : selectedWeek],
-    enabled: !!season,
+    queryKey: ["/api/matchups", weekKey],
+    enabled: Boolean(season && weekKey),
   });
 
   const weekOptions = season

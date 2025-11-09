@@ -4,7 +4,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getAICoachFeedback } from "./openai";
-import type { User, InsertKpi, InsertSeason, InsertKpiData, InsertMatchup } from "@shared/schema";
+import type { User, InsertKpi, InsertSeason, InsertKpiData, InsertMatchup, Matchup } from "@shared/schema";
+
+interface MatchupWithPlayers extends Matchup {
+  player1?: User;
+  player2?: User;
+  winner?: User | null;
+}
 import { 
   insertSeasonSchema, 
   insertKpiSchema, 
@@ -173,6 +179,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= Matchup Routes =============
+  app.get('/api/matchups/all', isAuthenticated, async (req, res) => {
+    try {
+      const season = await storage.getActiveSeason();
+      if (!season) {
+        return res.json([]);
+      }
+      
+      // Fetch all matchups for the active season
+      const allMatchups: MatchupWithPlayers[] = [];
+      const totalWeeks = season.regularSeasonWeeks + season.playoffWeeks;
+      
+      for (let week = 1; week <= totalWeeks; week++) {
+        const weekMatchups = await storage.getMatchupsByWeek(season.id, week);
+        
+        // Populate player data for each matchup
+        const withPlayers = await Promise.all(
+          weekMatchups.map(async (matchup) => {
+            const [player1, player2, winner] = await Promise.all([
+              storage.getUser(matchup.player1Id),
+              storage.getUser(matchup.player2Id),
+              matchup.winnerId ? storage.getUser(matchup.winnerId) : null,
+            ]);
+            
+            return {
+              ...matchup,
+              player1,
+              player2,
+              winner,
+            };
+          })
+        );
+        
+        allMatchups.push(...withPlayers);
+      }
+      
+      res.json(allMatchups);
+    } catch (error) {
+      console.error("Error fetching all matchups:", error);
+      res.status(500).json({ message: "Failed to fetch all matchups" });
+    }
+  });
+
   app.get('/api/matchups/recent', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -224,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/matchups/generate', isAuthenticated, isAdmin, async (req, res) => {
+  app.post('/api/matchups/recalculate', isAuthenticated, isAdmin, async (req, res) => {
     try {
       const bodySchema = z.object({ week: z.number().optional() });
       const { week } = bodySchema.parse(req.body);
@@ -233,28 +281,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No active season" });
       }
       
-      // Get all active users
-      const allUsers = await storage.getAllUsers();
-      const activeUsers = allUsers.filter(u => u.role !== 'cio'); // Exclude CIO from competition
+      const targetWeek = week || season.currentWeek;
+      await calculateMatchupScores(season.id, targetWeek);
       
-      // Shuffle and pair users
-      const shuffled = activeUsers.sort(() => Math.random() - 0.5);
-      const matchupsData: InsertMatchup[] = [];
-      
-      for (let i = 0; i < shuffled.length - 1; i += 2) {
-        matchupsData.push({
-          seasonId: season.id,
-          week: week || season.currentWeek,
-          player1Id: shuffled[i].id,
-          player2Id: shuffled[i + 1].id,
-          player1Score: null,
-          player2Score: null,
-          winnerId: null,
-          isPlayoff: week > season.regularSeasonWeeks,
-        });
+      res.json({ message: `Scores recalculated for week ${targetWeek}` });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error recalculating scores:", error);
+      res.status(500).json({ message: "Failed to recalculate scores" });
+    }
+  });
+
+  app.post('/api/matchups/generate', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const bodySchema = z.object({ 
+        week: z.number().optional(),
+        overwrite: z.boolean().optional()
+      });
+      const { week, overwrite } = bodySchema.parse(req.body);
+      const season = await storage.getActiveSeason();
+      if (!season) {
+        return res.status(404).json({ message: "No active season" });
       }
       
+      const targetWeek = week || season.currentWeek;
+      
+      // Check if matchups already exist for this week
+      const existing = await storage.getMatchupsByWeek(season.id, targetWeek);
+      if (existing.length > 0) {
+        if (!overwrite) {
+          return res.status(400).json({ 
+            message: "Matchups already exist for this week. Use overwrite flag to regenerate." 
+          });
+        }
+        // Delete existing matchups before creating new ones
+        await storage.deleteMatchupsByWeek(season.id, targetWeek);
+      }
+      
+      // Get all active users
+      const allUsers = await storage.getAllUsers();
+      const activeUsers = allUsers
+        .filter(u => u.role !== 'cio')
+        .sort((a, b) => (a.salesRepNumber || 999) - (b.salesRepNumber || 999));
+      
+      const matchupsData = generateRoundRobinMatchups(activeUsers, season.id, targetWeek, season.regularSeasonWeeks);
+      
       const created = await storage.bulkCreateMatchups(matchupsData);
+      
+      // Automatically calculate scores after generating matchups
+      await calculateMatchupScores(season.id, targetWeek);
+      
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -358,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           name: kpi?.name || "Unknown KPI",
           value: data.value,
-          unit: kpi?.unit,
+          unit: kpi?.unit ?? undefined,
         };
       });
       
@@ -393,28 +472,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Helper function to calculate matchup scores
+// Helper function to generate round-robin matchups using circle method
+function generateRoundRobinMatchups(
+  users: User[], 
+  seasonId: string, 
+  week: number, 
+  regularSeasonWeeks: number
+): InsertMatchup[] {
+  const matchups: InsertMatchup[] = [];
+  
+  if (users.length < 2) return matchups;
+  
+  // For even number of players, use circle method
+  // Fix player 0 in position, rotate others
+  const n = users.length;
+  
+  // Regular season: use round-robin (weeks 1-9 for 10 players)
+  if (week <= Math.min(9, regularSeasonWeeks)) {
+    // Circle method: fix first player, rotate others
+    const rotation = (week - 1) % (n - 1);
+    const positions = [users[0]]; // Anchor player
+    
+    // Rotate the rest
+    for (let i = 1; i < n; i++) {
+      const index = ((i - 1 + rotation) % (n - 1)) + 1;
+      positions.push(users[index]);
+    }
+    
+    // Create pairings: positions[i] vs positions[n-1-i]
+    for (let i = 0; i < Math.floor(n / 2); i++) {
+      matchups.push({
+        seasonId,
+        week,
+        player1Id: positions[i].id,
+        player2Id: positions[n - 1 - i].id,
+        player1Score: null,
+        player2Score: null,
+        winnerId: null,
+        isPlayoff: false,
+      });
+    }
+  } else if (week === 10 && week <= regularSeasonWeeks) {
+    // Week 10: Rivalry week (rematch of week 1)
+    const week1Matchups = generateRoundRobinMatchups(users, seasonId, 1, regularSeasonWeeks);
+    return week1Matchups.map(m => ({ ...m, week: 10 }));
+  } else {
+    // Playoffs: For now, use simple pairing by current standings
+    // This should be enhanced with bracket logic based on seeding
+    for (let i = 0; i < users.length - 1; i += 2) {
+      matchups.push({
+        seasonId,
+        week,
+        player1Id: users[i].id,
+        player2Id: users[i + 1].id,
+        player1Score: null,
+        player2Score: null,
+        winnerId: null,
+        isPlayoff: true,
+      });
+    }
+  }
+  
+  return matchups;
+}
+
+// Helper function to calculate matchup scores with normalized KPI values
 async function calculateMatchupScores(seasonId: string, week: number) {
   const matchups = await storage.getMatchupsByWeek(seasonId, week);
   const allKpis = await storage.getAllKpis();
   const activeKpis = allKpis.filter(k => k.isActive);
   
+  if (matchups.length === 0) return;
+  
+  // Get all participants for this week
+  const userIds = new Set<string>();
+  matchups.forEach(m => {
+    userIds.add(m.player1Id);
+    userIds.add(m.player2Id);
+  });
+  
+  // Fetch all KPI data for the week
+  const allUserData = await Promise.all(
+    Array.from(userIds).map(userId => 
+      storage.getKpiDataByUserAndWeek(userId, seasonId, week)
+    )
+  );
+  
+  // Calculate min/max for each KPI across all participants
+  const kpiStats = new Map<string, { min: number; max: number }>();
+  for (const kpi of activeKpis) {
+    const values: number[] = [];
+    allUserData.forEach(userData => {
+      const kpiValue = userData.find(d => d.kpiId === kpi.id);
+      if (kpiValue) values.push(kpiValue.value);
+    });
+    
+    if (values.length > 0) {
+      kpiStats.set(kpi.id, {
+        min: Math.min(...values),
+        max: Math.max(...values),
+      });
+    }
+  }
+  
+  // Calculate scores for each matchup
   for (const matchup of matchups) {
     const [player1Data, player2Data] = await Promise.all([
       storage.getKpiDataByUserAndWeek(matchup.player1Id, seasonId, week),
       storage.getKpiDataByUserAndWeek(matchup.player2Id, seasonId, week),
     ]);
     
-    // Calculate weighted scores
     let player1Score = 0;
     let player2Score = 0;
     
+    // Normalize total weight to 1.0
+    const totalWeight = activeKpis.reduce((sum, kpi) => sum + kpi.weight, 0);
+    if (totalWeight === 0) {
+      // No active KPIs with weight - skip scoring
+      continue;
+    }
+    
     for (const kpi of activeKpis) {
+      const stats = kpiStats.get(kpi.id);
+      if (!stats) continue;
+      
       const p1Data = player1Data.find(d => d.kpiId === kpi.id);
       const p2Data = player2Data.find(d => d.kpiId === kpi.id);
       
-      if (p1Data) player1Score += p1Data.value * kpi.weight;
-      if (p2Data) player2Score += p2Data.value * kpi.weight;
+      // Normalize KPI values to 0-1 range
+      const normalizeValue = (value: number | undefined) => {
+        if (value === undefined) return 0;
+        const range = stats.max - stats.min;
+        if (range === 0) return 0.5; // All players have same value
+        return Math.max(0, Math.min(1, (value - stats.min) / range));
+      };
+      
+      const p1Normalized = normalizeValue(p1Data?.value);
+      const p2Normalized = normalizeValue(p2Data?.value);
+      
+      // Apply weight (normalized to 0-1) and scale to 100-point baseline
+      const weightDecimal = kpi.weight / totalWeight;
+      player1Score += p1Normalized * weightDecimal * 100;
+      player2Score += p2Normalized * weightDecimal * 100;
     }
     
     const winnerId = player1Score > player2Score ? matchup.player1Id : 

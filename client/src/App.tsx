@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Matchups from "@/pages/matchups";
+import League from "@/pages/league";
 import Leaderboard from "@/pages/leaderboard";
 import UploadPage from "@/pages/upload";
 import Badges from "@/pages/badges";
@@ -27,6 +28,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/matchups" component={Matchups} />
+          <Route path="/league" component={League} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/upload" component={UploadPage} />
           <Route path="/badges" component={Badges} />

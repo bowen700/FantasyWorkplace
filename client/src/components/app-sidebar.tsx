@@ -1,4 +1,4 @@
-import { Trophy, BarChart3, Upload, Settings, Home, Award } from "lucide-react";
+import { Trophy, BarChart3, Upload, Settings, Home, Award, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -37,6 +37,12 @@ export function AppSidebar() {
       title: "Matchups",
       url: "/matchups",
       icon: Trophy,
+      visible: true,
+    },
+    {
+      title: "League",
+      url: "/league",
+      icon: Calendar,
       visible: true,
     },
     {
