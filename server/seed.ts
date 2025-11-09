@@ -152,7 +152,7 @@ export async function seedInitialData() {
         },
       ];
       
-      const usersToCreate = testUsers.filter(user => missingTestUsers.includes(user.id));
+      const usersToCreate = testUsers.filter(user => user.id && missingTestUsers.includes(user.id));
       
       for (const user of usersToCreate) {
         await storage.upsertUser(user);
