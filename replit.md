@@ -44,7 +44,7 @@ Fantasy Workplace is a gamified performance management platform that transforms 
 - **seed.ts**: Initial data seeding (badges, default season)
 
 ### Database Schema (`shared/schema.ts`)
-- **users**: User accounts with role (employee, admin, cio)
+- **users**: User accounts with role (employee, admin, cio) and sales rep number
 - **seasons**: Competition periods (10-week regular season + 4-week playoffs)
 - **kpis**: Performance indicators with weights and display order
 - **kpiData**: Weekly performance data submitted by users
@@ -130,6 +130,33 @@ See `design_guidelines.md` for comprehensive design system documentation includi
 - Vite HMR for frontend
 - Express server for backend + API
 
+## Current KPI Configuration
+The app is configured with 4 weighted KPIs for sales performance tracking:
+1. **Sales Gross Profit** (50% weight) - Total gross profit from sales
+2. **Sales Revenue** (16.67% weight) - Total revenue from sales
+3. **Leads Talked To** (16.67% weight) - Number of leads contacted
+4. **Deals Closed** (16.67% weight) - Number of deals closed
+
+Total weights: Sales Gross Profit = other 3 combined (50% vs 50%)
+
+## Sales Team Members
+All users have been assigned sales rep numbers:
+- **Rep 1**: Bowen Oswald (bowenbarry19@gmail.com) - Admin/User
+- **Rep 2**: Maya Anderson (maya@fantasyworkplace.com)
+- **Rep 3**: Ethan Martinez (ethan@fantasyworkplace.com)
+- **Rep 4**: Sofia Chen (sofia@fantasyworkplace.com)
+- **Rep 5**: Liam Johnson (liam@fantasyworkplace.com)
+- **Rep 6**: Olivia Davis (olivia@fantasyworkplace.com)
+- **Rep 7**: Noah Wilson (noah@fantasyworkplace.com)
+- **Rep 8**: Ava Taylor (ava@fantasyworkplace.com)
+- **Rep 9**: Lucas Brown (lucas@fantasyworkplace.com)
+- **Rep 10**: Chloe Garcia (chloe@fantasyworkplace.com)
+
+## Current Season Data
+- **Active Season**: 2025 Q4 Season (Week 1)
+- **Week 1 Data**: Uploaded for sales reps 2-10 (Rep 1/Bowen pending manual entry)
+- All KPI data is loaded and ready for matchup generation and leaderboard calculations
+
 ## Recent Changes
 - Full implementation of Fantasy Workplace MVP
 - Complete database schema with relations
@@ -141,3 +168,6 @@ See `design_guidelines.md` for comprehensive design system documentation includi
 - Admin panel for KPI/season management
 - Leaderboard calculations
 - Matchup scoring system
+- Added sales rep numbers to user profiles
+- Configured 4 sales KPIs with weighted scoring (Gross Profit: 50%, Revenue/Leads/Deals: 16.67% each)
+- Loaded Week 1 performance data for 9 sales reps from external data source
