@@ -18,6 +18,7 @@ Fantasy Workplace is a gamified performance management platform that transforms 
   - `landing.tsx` - Public landing page for unauthenticated users
   - `dashboard.tsx` - Main dashboard with quick stats and recent matchups
   - `matchups.tsx` - Head-to-head matchup results and history
+  - `league.tsx` - Browse all matchups from all weeks with filtering
   - `leaderboard.tsx` - Season rankings with win/loss records
   - `upload.tsx` - KPI data upload (manual entry or CSV file)
   - `badges.tsx` - Achievement gallery with earned/locked badges
@@ -34,7 +35,7 @@ Fantasy Workplace is a gamified performance management platform that transforms 
   - Seasons: `/api/seasons/*`
   - KPIs: `/api/kpis/*`
   - KPI Data: `/api/kpi-data/*`
-  - Matchups: `/api/matchups/*`
+  - Matchups: `/api/matchups/*` (GET by week, GET all, POST generate, POST recalculate)
   - Leaderboard: `/api/leaderboard`
   - Badges: `/api/badges/*`
   - AI Coach: `/api/ai-coach`
@@ -57,10 +58,12 @@ Fantasy Workplace is a gamified performance management platform that transforms 
 ## Key Features
 
 ### 1. Weekly Matchups
-- Automatic pairing generation
-- Weighted KPI scoring system
-- Win/loss tracking
+- Deterministic round-robin pairing generation (circle method)
+- Normalized KPI scoring system with min/max scaling
+- Weighted scoring with edge case handling (min==max returns 0.5, totalWeight==0 skips)
+- Win/loss tracking with automatic winner determination
 - Playoff qualification
+- Admin overwrite capability to regenerate specific weeks
 
 ### 2. KPI Management (Admin)
 - Create/edit/delete KPIs
@@ -171,3 +174,8 @@ All users have been assigned sales rep numbers:
 - Added sales rep numbers to user profiles
 - Configured 4 sales KPIs with weighted scoring (Gross Profit: 50%, Revenue/Leads/Deals: 16.67% each)
 - Loaded Week 1 performance data for 9 sales reps from external data source
+- Implemented deterministic round-robin matchup generation using circle method
+- Created normalized KPI scoring with edge case handling
+- Built League page for browsing all matchups with week filtering
+- Added matchup overwrite functionality (delete-before-insert)
+- Added recalculate endpoint for admin score refresh

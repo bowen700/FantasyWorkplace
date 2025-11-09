@@ -20,21 +20,24 @@ import Admin from "@/pages/admin";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading || !isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/matchups" component={Matchups} />
-          <Route path="/league" component={League} />
-          <Route path="/leaderboard" component={Leaderboard} />
-          <Route path="/upload" component={UploadPage} />
-          <Route path="/badges" component={Badges} />
-          <Route path="/admin" component={Admin} />
-        </>
-      )}
+      <Route path="/" component={Dashboard} />
+      <Route path="/matchups" component={Matchups} />
+      <Route path="/league" component={League} />
+      <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/upload" component={UploadPage} />
+      <Route path="/badges" component={Badges} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );
