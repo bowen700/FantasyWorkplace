@@ -1,6 +1,6 @@
 // Seed initial data for Fantasy Workplace
 import { storage } from "./storage";
-import type { InsertBadge, InsertSeason } from "@shared/schema";
+import type { InsertBadge, InsertSeason, UpsertUser } from "@shared/schema";
 
 export async function seedInitialData() {
   try {
@@ -76,6 +76,89 @@ export async function seedInitialData() {
       
       await storage.createSeason(season);
       console.log("✓ Default season created successfully");
+    }
+    
+    // Seed test users
+    const testUserIds = ["user-maya", "user-ethan", "user-sofia", "user-liam", "user-olivia", "user-noah", "user-ava", "user-lucas", "user-chloe"];
+    const existingTestUsers = await Promise.all(testUserIds.map(id => storage.getUser(id)));
+    const missingTestUsers = testUserIds.filter((id, index) => !existingTestUsers[index]);
+    
+    if (missingTestUsers.length > 0) {
+      console.log(`Seeding ${missingTestUsers.length} test users...`);
+      
+      const testUsers: UpsertUser[] = [
+        {
+          id: "user-maya",
+          email: "maya@fantasyworkplace.com",
+          firstName: "Maya",
+          lastName: "Anderson",
+          role: "employee",
+        },
+        {
+          id: "user-ethan",
+          email: "ethan@fantasyworkplace.com",
+          firstName: "Ethan",
+          lastName: "Martinez",
+          role: "employee",
+        },
+        {
+          id: "user-sofia",
+          email: "sofia@fantasyworkplace.com",
+          firstName: "Sofia",
+          lastName: "Chen",
+          role: "employee",
+        },
+        {
+          id: "user-liam",
+          email: "liam@fantasyworkplace.com",
+          firstName: "Liam",
+          lastName: "Johnson",
+          role: "employee",
+        },
+        {
+          id: "user-olivia",
+          email: "olivia@fantasyworkplace.com",
+          firstName: "Olivia",
+          lastName: "Davis",
+          role: "employee",
+        },
+        {
+          id: "user-noah",
+          email: "noah@fantasyworkplace.com",
+          firstName: "Noah",
+          lastName: "Wilson",
+          role: "employee",
+        },
+        {
+          id: "user-ava",
+          email: "ava@fantasyworkplace.com",
+          firstName: "Ava",
+          lastName: "Taylor",
+          role: "employee",
+        },
+        {
+          id: "user-lucas",
+          email: "lucas@fantasyworkplace.com",
+          firstName: "Lucas",
+          lastName: "Brown",
+          role: "employee",
+        },
+        {
+          id: "user-chloe",
+          email: "chloe@fantasyworkplace.com",
+          firstName: "Chloe",
+          lastName: "Garcia",
+          role: "employee",
+        },
+      ];
+      
+      const usersToCreate = testUsers.filter(user => missingTestUsers.includes(user.id));
+      
+      for (const user of usersToCreate) {
+        await storage.upsertUser(user);
+      }
+      
+      console.log(`✓ ${usersToCreate.length} test users seeded successfully`);
     }
     
     console.log("✓ All initial data seeded");
