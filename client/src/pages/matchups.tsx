@@ -143,6 +143,8 @@ export default function Matchups() {
       });
       setKpiInputs([]);
       queryClient.invalidateQueries({ queryKey: ["/api/kpi-data"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kpi-data/weekly", weekKey] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups", weekKey] });
     },
     onError: (error: Error) => {
       toast({
