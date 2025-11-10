@@ -1,4 +1,4 @@
-import { Trophy, Settings, Award, Calendar } from "lucide-react";
+import { Trophy, Settings, Award, Calendar, LayoutDashboard } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -35,6 +35,13 @@ export function AppSidebar() {
       primary: true,
     },
     {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: LayoutDashboard,
+      visible: true,
+      primary: true,
+    },
+    {
       title: "League",
       url: "/league",
       icon: Calendar,
@@ -63,7 +70,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <Trophy className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="font-display text-xl font-bold">Fantasy Workplace</h1>
+            <div className="font-display text-xl font-bold">Fantasy Workplace</div>
             {user && (
               <Badge variant="outline" className="mt-1 text-xs">
                 {user.role === "admin" ? "Admin" : user.role === "cio" ? "CIO" : "Employee"}

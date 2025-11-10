@@ -9,6 +9,7 @@ import { Header } from "@/components/header";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Dashboard from "@/pages/dashboard";
 import Matchups from "@/pages/matchups";
 import League from "@/pages/league";
 import Badges from "@/pages/badges";
@@ -29,6 +30,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Matchups} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/league" component={League} />
       <Route path="/badges" component={Badges} />
       <Route path="/admin" component={Admin} />

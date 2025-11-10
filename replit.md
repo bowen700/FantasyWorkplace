@@ -134,13 +134,13 @@ See `design_guidelines.md` for comprehensive design system documentation includi
 - Express server for backend + API
 
 ## Current KPI Configuration
-The app is configured with 4 weighted KPIs for sales performance tracking:
-1. **Sales Gross Profit** (50% weight) - Total gross profit from sales
-2. **Sales Revenue** (16.67% weight) - Total revenue from sales
-3. **Leads Talked To** (16.67% weight) - Number of leads contacted
-4. **Deals Closed** (16.67% weight) - Number of deals closed
+The app is configured with 4 KPIs using **point-based scoring**:
+1. **Sales Gross Profit** - 300 GP = 1 point
+2. **Sales Revenue** - 3,000 revenue = 1 point
+3. **Leads Talked To** - 3 leads = 1 point
+4. **Deals Closed** - 1 deal = 1 point
 
-Total weights: Sales Gross Profit = other 3 combined (50% vs 50%)
+Points from all KPIs are summed to calculate the total score for each matchup.
 
 ## Sales Team Members
 All users have been assigned sales rep numbers:
@@ -161,6 +161,26 @@ All users have been assigned sales rep numbers:
 - All KPI data is loaded and ready for matchup generation and leaderboard calculations
 
 ## Recent Changes
+
+### November 10, 2025 - Playoff System & Scoring Updates
+- **Scoring System Overhaul**: Replaced weighted normalization with simple point-based conversion (300 GP=1pt, 3000 revenue=1pt, 3 leads=1pt, 1 deal=1pt)
+- **Playoff Bracket System**: Implemented 6-team tournament bracket for weeks 11-13
+  - Week 11: Quarterfinals (Seeds 3v6, 4v5) with byes for Seeds 1-2
+  - Week 12: Semifinals (1 vs Winner(3v6), 2 vs Winner(4v5))
+  - Week 13: Championship Final
+- **League Page Enhancements**:
+  - Added week selector dropdown defaulting to current week
+  - Limited week selection to weeks 1-13 only
+  - Built custom tournament bracket visualization for playoff weeks
+  - Added playoff-aware empty state messaging for weeks 11-13
+- **Matchup Page Enhancements**:
+  - Added week selector dropdown defaulting to current week
+  - Added collapsible "How the score is calculated" explanation
+- **Database Cleanup**: Removed 3 John Doe test users, confirmed exactly 10 active sales reps
+- **Navigation**: Added Dashboard route and sidebar navigation link
+- **Accessibility**: Fixed duplicate H1 element issue in app header
+
+### Earlier Changes
 - Full implementation of Fantasy Workplace MVP
 - Complete database schema with relations
 - All frontend pages and components built
@@ -172,10 +192,8 @@ All users have been assigned sales rep numbers:
 - Leaderboard calculations
 - Matchup scoring system
 - Added sales rep numbers to user profiles
-- Configured 4 sales KPIs with weighted scoring (Gross Profit: 50%, Revenue/Leads/Deals: 16.67% each)
 - Loaded Week 1 performance data for 9 sales reps from external data source
 - Implemented deterministic round-robin matchup generation using circle method
-- Created normalized KPI scoring with edge case handling
 - Built League page for browsing all matchups with week filtering
 - Added matchup overwrite functionality (delete-before-insert)
 - Added recalculate endpoint for admin score refresh
