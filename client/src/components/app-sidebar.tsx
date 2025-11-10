@@ -1,4 +1,4 @@
-import { Trophy, BarChart3, Upload, Settings, Home, Award, Calendar } from "lucide-react";
+import { Trophy, Settings, Award, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -28,46 +28,32 @@ export function AppSidebar() {
 
   const menuItems = [
     {
-      title: "Dashboard",
+      title: "Matchup",
       url: "/",
-      icon: Home,
-      visible: true,
-    },
-    {
-      title: "Matchups",
-      url: "/matchups",
       icon: Trophy,
       visible: true,
+      primary: true,
     },
     {
       title: "League",
       url: "/league",
       icon: Calendar,
       visible: true,
-    },
-    {
-      title: "Leaderboard",
-      url: "/leaderboard",
-      icon: BarChart3,
-      visible: true,
-    },
-    {
-      title: "Upload Data",
-      url: "/upload",
-      icon: Upload,
-      visible: true,
+      primary: true,
     },
     {
       title: "Badges",
       url: "/badges",
       icon: Award,
       visible: true,
+      primary: false,
     },
     {
       title: "Admin",
       url: "/admin",
       icon: Settings,
       visible: user?.role === "admin" || user?.role === "cio",
+      primary: false,
     },
   ];
 
@@ -99,9 +85,10 @@ export function AppSidebar() {
                       asChild
                       isActive={location === item.url}
                       data-testid={`nav-${item.title.toLowerCase()}`}
+                      className={item.primary ? "" : "text-sm opacity-70"}
                     >
                       <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className={item.primary ? "h-4 w-4" : "h-3.5 w-3.5"} />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
