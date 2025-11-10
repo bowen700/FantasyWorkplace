@@ -113,7 +113,7 @@ export default function League() {
           </SelectTrigger>
           <SelectContent>
             {weekOptions.map((week) => (
-              <SelectItem key={week} value={week.toString()}>
+              <SelectItem key={week} value={week.toString()} className={week === season?.currentWeek ? "font-bold" : ""}>
                 Week {week}
               </SelectItem>
             ))}
@@ -149,17 +149,17 @@ export default function League() {
                   )}
                 </div>
                 
-                {/* Playoff bracket visualization for weeks 11-13 */}
+                {/* Playoff bracket visualization for weeks 10-12 */}
                 {isPlayoffWeek ? (
                   <Card>
                     <CardContent className="p-6">
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Column 1: Quarterfinals (Week 11) or Seed 1 Bracket (Week 12+) */}
+                        {/* Column 1: Quarterfinals (Week 10) or Seed 1 Bracket (Week 11+) */}
                         <div className="space-y-4">
                           <h3 className="font-semibold text-center mb-4">
-                            {week === 11 ? "Quarterfinals" : "Seed 1 Bracket"}
+                            {week === 10 ? "Quarterfinals" : "Seed 1 Bracket"}
                           </h3>
-                          {week === 11 ? (
+                          {week === 10 ? (
                             <>
                               {/* Seed 3 vs Seed 6 */}
                               {weekMatchups[0] && (
@@ -200,7 +200,7 @@ export default function League() {
                               )}
                             </>
                           ) : (
-                            /* Week 12+: Show Seed 1 matchup */
+                            /* Week 11+: Show Seed 1 matchup */
                             weekMatchups[0] && (
                               <Card className="border-primary/30">
                                 <CardContent className="p-4">
@@ -234,12 +234,12 @@ export default function League() {
                           )}
                         </div>
 
-                        {/* Column 2: Center - Seed 4 vs Seed 5 (Week 11) or Championship (Week 13) */}
+                        {/* Column 2: Center - Seed 4 vs Seed 5 (Week 10) or Championship (Week 12) */}
                         <div className="space-y-4">
                           <h3 className="font-semibold text-center mb-4">
-                            {week === 11 ? "Quarterfinals" : week === 13 ? "Championship" : "Seed 2 Bracket"}
+                            {week === 10 ? "Quarterfinals" : week === 12 ? "Championship" : "Seed 2 Bracket"}
                           </h3>
-                          {week === 11 ? (
+                          {week === 10 ? (
                             <>
                               {/* Seed 4 vs Seed 5 */}
                               {weekMatchups[1] && (
@@ -279,8 +279,8 @@ export default function League() {
                                 </Card>
                               )}
                             </>
-                          ) : week === 13 ? (
-                            /* Week 13: Championship */
+                          ) : week === 12 ? (
+                            /* Week 12: Championship */
                             weekMatchups[0] && (
                               <Card className="border-primary">
                                 <CardHeader className="pb-3">
@@ -319,7 +319,7 @@ export default function League() {
                               </Card>
                             )
                           ) : (
-                            /* Week 12: Show Seed 2 matchup */
+                            /* Week 11: Show Seed 2 matchup */
                             weekMatchups[1] && (
                               <Card className="border-primary/30">
                                 <CardContent className="p-4">
@@ -353,20 +353,20 @@ export default function League() {
                           )}
                         </div>
 
-                        {/* Column 3: Byes (Week 11) or empty for now */}
-                        {week === 11 && (
+                        {/* Column 3: Byes (Week 10) or empty for now */}
+                        {week === 10 && (
                           <div className="space-y-4">
                             <h3 className="font-semibold text-center mb-4">First Round Byes</h3>
                             <Card className="border-primary">
                               <CardContent className="p-4 text-center">
                                 <Badge variant="default" className="mb-2">Seed 1</Badge>
-                                <div className="text-sm text-muted-foreground">Bye to Week 12</div>
+                                <div className="text-sm text-muted-foreground">Bye to Week 11</div>
                               </CardContent>
                             </Card>
                             <Card className="border-primary">
                               <CardContent className="p-4 text-center">
                                 <Badge variant="default" className="mb-2">Seed 2</Badge>
-                                <div className="text-sm text-muted-foreground">Bye to Week 12</div>
+                                <div className="text-sm text-muted-foreground">Bye to Week 11</div>
                               </CardContent>
                             </Card>
                           </div>
@@ -445,11 +445,11 @@ export default function League() {
                   <Trophy className="h-16 w-16 mx-auto mb-4 text-primary" />
                   <CardTitle className="mb-2">Playoff Matchups Not Generated Yet</CardTitle>
                   <CardDescription>
-                    {parseInt(selectedWeek) === 11 
-                      ? "Week 11 Quarterfinal matchups (top 6 seeds) will be generated by your admin after the regular season ends."
-                      : parseInt(selectedWeek) === 12
-                      ? "Week 12 Semifinal matchups will be generated after Week 11 winners are determined."
-                      : "Week 13 Championship matchup will be generated after Week 12 winners are determined."}
+                    {parseInt(selectedWeek) === 10
+                      ? "Week 10 Quarterfinal matchups (top 6 seeds) will be generated by your admin after the regular season ends."
+                      : parseInt(selectedWeek) === 11
+                      ? "Week 11 Semifinal matchups will be generated after Week 10 winners are determined."
+                      : "Week 12 Championship matchup will be generated after Week 11 winners are determined."}
                   </CardDescription>
                 </CardContent>
               </Card>

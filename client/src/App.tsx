@@ -29,6 +29,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Matchups} />
+      <Route path="/matchups" component={Matchups} />
       <Route path="/league" component={League} />
       <Route path="/badges" component={Badges} />
       <Route path="/admin" component={Admin} />

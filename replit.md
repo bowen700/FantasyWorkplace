@@ -162,22 +162,40 @@ All users have been assigned sales rep numbers:
 
 ## Recent Changes
 
-### November 10, 2025 - Playoff System & Scoring Updates
-- **Scoring System Overhaul**: Replaced weighted normalization with simple point-based conversion (300 GP=1pt, 3000 revenue=1pt, 3 leads=1pt, 1 deal=1pt)
-- **Playoff Bracket System**: Implemented 6-team tournament bracket for weeks 11-13
-  - Week 11: Quarterfinals (Seeds 3v6, 4v5) with byes for Seeds 1-2
-  - Week 12: Semifinals (1 vs Winner(3v6), 2 vs Winner(4v5))
-  - Week 13: Championship Final
-- **League Page Enhancements**:
-  - Added week selector dropdown defaulting to current week
-  - Limited week selection to weeks 1-13 only
-  - Built custom tournament bracket visualization for playoff weeks
-  - Added playoff-aware empty state messaging for weeks 11-13
+### November 10, 2025 - Season Structure Changes & Enhanced Matchup Page
+- **Season Structure Update**: Changed from 10 regular + 4 playoff to 9 regular + 3 playoff weeks (total 12 weeks)
+  - Regular season: Weeks 1-9
+  - Playoffs: Weeks 10-12
+  - Updated playoff bracket logic for weeks 10-12 (was 11-13)
+  - Week 10: Quarterfinals (Seeds 3v6, 4v5) with byes for Seeds 1-2
+  - Week 11: Semifinals (1 vs Winner(3v6), 2 vs Winner(4v5))
+  - Week 12: Championship Final
+- **Matchup Generation**: Generated round-robin matchups for weeks 2-9 using circle method
+  - All 10 users face each other exactly once during regular season
+  - No byes needed with even number of players
+- **League Page Updates**:
+  - Week selector limited to 12 weeks
+  - Playoff bracket visualization updated for weeks 10-12
+  - Bold current week in dropdown
 - **Matchup Page Enhancements**:
-  - Added week selector dropdown defaulting to current week
+  - Week selector limited to 12 weeks with bold current week indicator
+  - KPI submission section only shown on current week
+  - Changed title to "Submit/Edit KPI Data"
+  - Pre-populated all 4 KPIs with existing values or zeros for current week
+  - Changed submit button text to "Submit These KPI Adjustments"
+  - Individual KPI scores now show converted points in bold (e.g., "4.0 pts") instead of raw values
   - Added collapsible "How the score is calculated" explanation
+- **Navigation Cleanup**: Removed Dashboard page, route, and sidebar link
+- **Routing Fix**: Added `/matchups` route alongside root `/` route for better accessibility
+- **Testing & Validation**: 
+  - Completed end-to-end testing with OIDC authentication
+  - Verified all playoff empty state messaging references weeks 10-12 (no Week 13 references)
+  - Confirmed matchup page displays KPI breakdown with converted points
+- **Database**: Confirmed 10 active sales reps after removing test users
+
+### Earlier - Playoff System & Scoring Updates
+- **Scoring System Overhaul**: Replaced weighted normalization with simple point-based conversion (300 GP=1pt, 3000 revenue=1pt, 3 leads=1pt, 1 deal=1pt)
 - **Database Cleanup**: Removed 3 John Doe test users, confirmed exactly 10 active sales reps
-- **Navigation**: Added Dashboard route and sidebar navigation link
 - **Accessibility**: Fixed duplicate H1 element issue in app header
 
 ### Earlier Changes

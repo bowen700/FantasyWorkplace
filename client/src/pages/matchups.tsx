@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,14 +122,26 @@ export default function Matchups() {
   const getKpiBreakdown = (userId: string | undefined) => {
     if (!userId || !kpiData || !kpis) return [];
 
+    // Point conversion factors for each KPI
+    const kpiConversionFactors: Record<string, number> = {
+      "Sales Gross Profit": 300,    // 300 GP = 1 point
+      "Sales Revenue": 3000,         // 3000 revenue = 1 point
+      "Leads Talked To": 3,          // 3 leads = 1 point
+      "Deals Closed": 1,             // 1 deal = 1 point
+    };
+
     const userKpiData = kpiData.filter((d) => d.userId === userId);
     return kpis
       .filter((kpi) => kpi.isActive)
       .map((kpi) => {
         const data = userKpiData.find((d) => d.kpiId === kpi.id);
+        const value = data?.value ?? 0;
+        const conversionFactor = kpiConversionFactors[kpi.name] || 1;
+        const points = value / conversionFactor;
         return {
           name: kpi.name,
-          value: data?.value ?? 0,
+          value,
+          points,
           weight: kpi.weight,
         };
       });
@@ -182,6 +194,27 @@ export default function Matchups() {
     setKpiInputs(newInputs);
   };
 
+  // Pre-populate all 4 KPIs when viewing current week
+  useEffect(() => {
+    if (!season || !kpis || !user) return;
+    
+    const isCurrentWeek = parseInt(selectedWeek || "0") === season.currentWeek;
+    
+    if (isCurrentWeek && kpis.length > 0 && kpiInputs.length === 0) {
+      const activeKpis = kpis.filter(k => k.isActive);
+      const prepopulatedInputs = activeKpis.map(kpi => {
+        const existingData = kpiData?.find(d => d.kpiId === kpi.id && d.userId === user.id);
+        return {
+          kpiId: kpi.id,
+          value: existingData?.value?.toString() || "0",
+        };
+      });
+      setKpiInputs(prepopulatedInputs);
+    } else if (!isCurrentWeek && kpiInputs.length > 0) {
+      setKpiInputs([]);
+    }
+  }, [selectedWeek, season, kpis, kpiData, user, kpiInputs.length]);
+
   const handleSubmit = () => {
     if (!season || !user) return;
 
@@ -222,7 +255,7 @@ export default function Matchups() {
           </SelectTrigger>
           <SelectContent>
             {weekOptions.map((week) => (
-              <SelectItem key={week} value={week.toString()}>
+              <SelectItem key={week} value={week.toString()} className={week === season?.currentWeek ? "font-bold" : ""}>
                 Week {week}
               </SelectItem>
             ))}
@@ -260,7 +293,7 @@ export default function Matchups() {
                   {myKpiBreakdown.map((kpi, index) => (
                     <div key={index} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{kpi.name}</span>
-                      <span className="font-semibold">{kpi.value.toFixed(1)}</span>
+                      <span className="font-bold">{kpi.points.toFixed(1)} pts</span>
                     </div>
                   ))}
                 </div>
@@ -305,7 +338,7 @@ export default function Matchups() {
                   {opponentKpiBreakdown.map((kpi, index) => (
                     <div key={index} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{kpi.name}</span>
-                      <span className="font-semibold">{kpi.value.toFixed(1)}</span>
+                      <span className="font-bold">{kpi.points.toFixed(1)} pts</span>
                     </div>
                   ))}
                 </div>
@@ -325,17 +358,20 @@ export default function Matchups() {
         </Card>
       )}
 
-      <Separator className="my-8" />
+      {/* Only show KPI submission on current week */}
+      {parseInt(selectedWeek || "0") === season?.currentWeek && (
+        <>
+          <Separator className="my-8" />
 
-      {/* Manual Entry Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Submit KPI Data</CardTitle>
-          <CardDescription>
-            Enter your performance metrics for Week {season?.currentWeek}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          {/* Manual Entry Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Submit/Edit KPI Data</CardTitle>
+              <CardDescription>
+                Enter your performance metrics for Week {selectedWeek}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
           {/* How the score is calculated */}
           <Collapsible>
             <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover-elevate p-2 rounded-md w-full" data-testid="button-scoring-info">
@@ -421,11 +457,13 @@ export default function Matchups() {
               disabled={kpiInputs.length === 0 || submitKpiMutation.isPending}
               data-testid="button-submit"
             >
-              {submitKpiMutation.isPending ? "Submitting..." : "Submit KPI Data"}
+              {submitKpiMutation.isPending ? "Submitting..." : "Submit These KPI Adjustments"}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
