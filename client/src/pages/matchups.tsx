@@ -10,9 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Trophy, Plus, Trash2 } from "lucide-react";
+import { Trophy, Plus, Trash2, ChevronDown } from "lucide-react";
 import type { Matchup, Season, User, Kpi, KpiData, InsertKpiData } from "@shared/schema";
 
 interface MatchupWithPlayers extends Matchup {
@@ -46,7 +47,19 @@ export default function Matchups() {
     queryKey: ["/api/kpis"],
   });
 
-  const weekKey = season?.currentWeek?.toString();
+  // Week selector state - defaults to current week when season loads
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  
+  // Set selected week to current week when season loads
+  if (season?.currentWeek && !selectedWeek) {
+    setSelectedWeek(season.currentWeek.toString());
+  }
+
+  const weekKey = selectedWeek || season?.currentWeek?.toString();
+  
+  const weekOptions = season
+    ? Array.from({ length: 13 }, (_, i) => i + 1)
+    : [];
 
   const { data: matchups, isLoading: matchupsLoading } = useQuery<MatchupWithPlayers[]>({
     queryKey: ["/api/matchups", weekKey],
@@ -198,9 +211,23 @@ export default function Matchups() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="font-display text-4xl font-bold mb-2">Week {season?.currentWeek} Matchup</h1>
-        <p className="text-muted-foreground">Your head-to-head competition</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-4xl font-bold mb-2">Week {selectedWeek || season?.currentWeek} Matchup</h1>
+          <p className="text-muted-foreground">Your head-to-head competition</p>
+        </div>
+        <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+          <SelectTrigger className="w-40" data-testid="select-week">
+            <SelectValue placeholder="Select week" />
+          </SelectTrigger>
+          <SelectContent>
+            {weekOptions.map((week) => (
+              <SelectItem key={week} value={week.toString()}>
+                Week {week}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -309,6 +336,38 @@ export default function Matchups() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* How the score is calculated */}
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover-elevate p-2 rounded-md w-full" data-testid="button-scoring-info">
+              <ChevronDown className="h-4 w-4" />
+              <span>How the score is calculated</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 p-4 rounded-md bg-muted/50 text-sm space-y-2">
+              <p className="font-semibold mb-2">Point Conversion System:</p>
+              <div className="space-y-1 text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>• Sales Gross Profit:</span>
+                  <span className="font-medium">300 = 1 point</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Sales Revenue:</span>
+                  <span className="font-medium">3,000 = 1 point</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Leads Talked To:</span>
+                  <span className="font-medium">3 = 1 point</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Deals Closed:</span>
+                  <span className="font-medium">1 = 1 point</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 pt-2 border-t">
+                Your total score is the sum of points from all KPIs. The player with the higher total score wins the matchup.
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
+
           {kpiInputs.map((input, index) => (
             <div key={index} className="flex items-end gap-4">
               <div className="flex-1">

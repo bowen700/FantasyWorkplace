@@ -25,19 +25,24 @@ interface MatchupWithPlayers extends Matchup {
 }
 
 export default function League() {
-  const [selectedWeek, setSelectedWeek] = useState<string>("all");
-
   const { data: season } = useQuery<Season>({
     queryKey: ["/api/seasons/active"],
   });
 
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  
+  // Set selected week to current week when season loads
+  if (season?.currentWeek && !selectedWeek) {
+    setSelectedWeek(season.currentWeek.toString());
+  }
+
   const weekOptions = season
-    ? Array.from({ length: season.regularSeasonWeeks + season.playoffWeeks }, (_, i) => i + 1)
+    ? Array.from({ length: 13 }, (_, i) => i + 1)
     : [];
 
-  // Fetch matchups for the selected week or all weeks
+  // Fetch matchups for the selected week
   const { data: matchups, isLoading } = useQuery<MatchupWithPlayers[]>({
-    queryKey: selectedWeek === "all" ? ["/api/matchups/all"] : ["/api/matchups", selectedWeek],
+    queryKey: ["/api/matchups", selectedWeek],
     enabled: Boolean(season),
   });
 
@@ -107,7 +112,6 @@ export default function League() {
             <SelectValue placeholder="Select week" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Weeks</SelectItem>
             {weekOptions.map((week) => (
               <SelectItem key={week} value={week.toString()}>
                 Week {week}
@@ -144,57 +148,286 @@ export default function League() {
                     <Badge variant="default">Playoffs</Badge>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {weekMatchups.map((matchup) => (
-                    <Card
-                      key={matchup.id}
-                      className="overflow-hidden"
-                      data-testid={`matchup-card-${matchup.id}`}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between gap-2">
-                          {/* Player 1 */}
-                          <div className="flex flex-col items-center text-center flex-1">
-                            <Avatar className="h-12 w-12 mb-2">
-                              <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
-                              <AvatarFallback>{getInitials(matchup.player1)}</AvatarFallback>
-                            </Avatar>
-                            <div className="font-medium text-xs truncate w-full">
-                              {matchup.player1?.firstName} {matchup.player1?.lastName}
-                            </div>
-                            <div className="text-2xl font-bold font-display mt-1">
-                              {matchup.player1Score !== null ? matchup.player1Score.toFixed(1) : "-"}
-                            </div>
-                          </div>
-
-                          {/* VS Badge */}
-                          <div className="flex flex-col items-center flex-shrink-0">
-                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs">
-                              VS
-                            </div>
-                            {matchup.winnerId && (
-                              <Trophy className="h-4 w-4 text-primary mt-1" />
-                            )}
-                          </div>
-
-                          {/* Player 2 */}
-                          <div className="flex flex-col items-center text-center flex-1">
-                            <Avatar className="h-12 w-12 mb-2">
-                              <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
-                              <AvatarFallback>{getInitials(matchup.player2)}</AvatarFallback>
-                            </Avatar>
-                            <div className="font-medium text-xs truncate w-full">
-                              {matchup.player2?.firstName} {matchup.player2?.lastName}
-                            </div>
-                            <div className="text-2xl font-bold font-display mt-1">
-                              {matchup.player2Score !== null ? matchup.player2Score.toFixed(1) : "-"}
-                            </div>
-                          </div>
+                
+                {/* Playoff bracket visualization for weeks 11-13 */}
+                {isPlayoffWeek ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Column 1: Quarterfinals (Week 11) or Seed 1 Bracket (Week 12+) */}
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-center mb-4">
+                            {week === 11 ? "Quarterfinals" : "Seed 1 Bracket"}
+                          </h3>
+                          {week === 11 ? (
+                            <>
+                              {/* Seed 3 vs Seed 6 */}
+                              {weekMatchups[0] && (
+                                <Card className="border-primary/30" data-testid="bracket-quarterfinal-1">
+                                  <CardContent className="p-4">
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary" className="text-xs">Seed 3</Badge>
+                                          <span className="text-sm font-medium">
+                                            {weekMatchups[0].player1?.firstName} {weekMatchups[0].player1?.lastName}
+                                          </span>
+                                        </div>
+                                        <span className="font-bold font-display">
+                                          {weekMatchups[0].player1Score?.toFixed(1) || "-"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary" className="text-xs">Seed 6</Badge>
+                                          <span className="text-sm font-medium">
+                                            {weekMatchups[0].player2?.firstName} {weekMatchups[0].player2?.lastName}
+                                          </span>
+                                        </div>
+                                        <span className="font-bold font-display">
+                                          {weekMatchups[0].player2Score?.toFixed(1) || "-"}
+                                        </span>
+                                      </div>
+                                      {weekMatchups[0].winnerId && (
+                                        <div className="text-center pt-2 border-t">
+                                          <Trophy className="h-4 w-4 inline mr-1 text-primary" />
+                                          <span className="text-xs text-muted-foreground">Winner advances</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </>
+                          ) : (
+                            /* Week 12+: Show Seed 1 matchup */
+                            weekMatchups[0] && (
+                              <Card className="border-primary/30">
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="default" className="text-xs">Seed 1</Badge>
+                                        <span className="text-sm font-medium">
+                                          {weekMatchups[0].player1?.firstName} {weekMatchups[0].player1?.lastName}
+                                        </span>
+                                      </div>
+                                      <span className="font-bold font-display">
+                                        {weekMatchups[0].player1Score?.toFixed(1) || "-"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="secondary" className="text-xs">Winner</Badge>
+                                        <span className="text-sm font-medium">
+                                          {weekMatchups[0].player2?.firstName} {weekMatchups[0].player2?.lastName}
+                                        </span>
+                                      </div>
+                                      <span className="font-bold font-display">
+                                        {weekMatchups[0].player2Score?.toFixed(1) || "-"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+
+                        {/* Column 2: Center - Seed 4 vs Seed 5 (Week 11) or Championship (Week 13) */}
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-center mb-4">
+                            {week === 11 ? "Quarterfinals" : week === 13 ? "Championship" : "Seed 2 Bracket"}
+                          </h3>
+                          {week === 11 ? (
+                            <>
+                              {/* Seed 4 vs Seed 5 */}
+                              {weekMatchups[1] && (
+                                <Card className="border-primary/30">
+                                  <CardContent className="p-4">
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary" className="text-xs">Seed 4</Badge>
+                                          <span className="text-sm font-medium">
+                                            {weekMatchups[1].player1?.firstName} {weekMatchups[1].player1?.lastName}
+                                          </span>
+                                        </div>
+                                        <span className="font-bold font-display">
+                                          {weekMatchups[1].player1Score?.toFixed(1) || "-"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="secondary" className="text-xs">Seed 5</Badge>
+                                          <span className="text-sm font-medium">
+                                            {weekMatchups[1].player2?.firstName} {weekMatchups[1].player2?.lastName}
+                                          </span>
+                                        </div>
+                                        <span className="font-bold font-display">
+                                          {weekMatchups[1].player2Score?.toFixed(1) || "-"}
+                                        </span>
+                                      </div>
+                                      {weekMatchups[1].winnerId && (
+                                        <div className="text-center pt-2 border-t">
+                                          <Trophy className="h-4 w-4 inline mr-1 text-primary" />
+                                          <span className="text-xs text-muted-foreground">Winner advances</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </>
+                          ) : week === 13 ? (
+                            /* Week 13: Championship */
+                            weekMatchups[0] && (
+                              <Card className="border-primary">
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-center flex items-center justify-center gap-2">
+                                    <Trophy className="h-5 w-5 text-primary" />
+                                    Championship
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-3 rounded-md bg-muted/30">
+                                      <span className="font-medium">
+                                        {weekMatchups[0].player1?.firstName} {weekMatchups[0].player1?.lastName}
+                                      </span>
+                                      <span className="font-bold font-display text-lg">
+                                        {weekMatchups[0].player1Score?.toFixed(1) || "-"}
+                                      </span>
+                                    </div>
+                                    <div className="text-center text-xs text-muted-foreground">vs</div>
+                                    <div className="flex items-center justify-between p-3 rounded-md bg-muted/30">
+                                      <span className="font-medium">
+                                        {weekMatchups[0].player2?.firstName} {weekMatchups[0].player2?.lastName}
+                                      </span>
+                                      <span className="font-bold font-display text-lg">
+                                        {weekMatchups[0].player2Score?.toFixed(1) || "-"}
+                                      </span>
+                                    </div>
+                                    {weekMatchups[0].winnerId && (
+                                      <div className="text-center pt-3 border-t">
+                                        <Trophy className="h-6 w-6 inline text-primary mb-1" />
+                                        <div className="font-bold text-primary">Champion!</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          ) : (
+                            /* Week 12: Show Seed 2 matchup */
+                            weekMatchups[1] && (
+                              <Card className="border-primary/30">
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="default" className="text-xs">Seed 2</Badge>
+                                        <span className="text-sm font-medium">
+                                          {weekMatchups[1].player1?.firstName} {weekMatchups[1].player1?.lastName}
+                                        </span>
+                                      </div>
+                                      <span className="font-bold font-display">
+                                        {weekMatchups[1].player1Score?.toFixed(1) || "-"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="secondary" className="text-xs">Winner</Badge>
+                                        <span className="text-sm font-medium">
+                                          {weekMatchups[1].player2?.firstName} {weekMatchups[1].player2?.lastName}
+                                        </span>
+                                      </div>
+                                      <span className="font-bold font-display">
+                                        {weekMatchups[1].player2Score?.toFixed(1) || "-"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          )}
+                        </div>
+
+                        {/* Column 3: Byes (Week 11) or empty for now */}
+                        {week === 11 && (
+                          <div className="space-y-4">
+                            <h3 className="font-semibold text-center mb-4">First Round Byes</h3>
+                            <Card className="border-primary">
+                              <CardContent className="p-4 text-center">
+                                <Badge variant="default" className="mb-2">Seed 1</Badge>
+                                <div className="text-sm text-muted-foreground">Bye to Week 12</div>
+                              </CardContent>
+                            </Card>
+                            <Card className="border-primary">
+                              <CardContent className="p-4 text-center">
+                                <Badge variant="default" className="mb-2">Seed 2</Badge>
+                                <div className="text-sm text-muted-foreground">Bye to Week 12</div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  /* Regular season matchup grid */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {weekMatchups.map((matchup) => (
+                      <Card
+                        key={matchup.id}
+                        className="overflow-hidden"
+                        data-testid={`matchup-card-${matchup.id}`}
+                      >
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between gap-2">
+                            {/* Player 1 */}
+                            <div className="flex flex-col items-center text-center flex-1">
+                              <Avatar className="h-12 w-12 mb-2">
+                                <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
+                                <AvatarFallback>{getInitials(matchup.player1)}</AvatarFallback>
+                              </Avatar>
+                              <div className="font-medium text-xs truncate w-full">
+                                {matchup.player1?.firstName} {matchup.player1?.lastName}
+                              </div>
+                              <div className="text-2xl font-bold font-display mt-1">
+                                {matchup.player1Score !== null ? matchup.player1Score.toFixed(1) : "-"}
+                              </div>
+                            </div>
+
+                            {/* VS Badge */}
+                            <div className="flex flex-col items-center flex-shrink-0">
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs">
+                                VS
+                              </div>
+                              {matchup.winnerId && (
+                                <Trophy className="h-4 w-4 text-primary mt-1" />
+                              )}
+                            </div>
+
+                            {/* Player 2 */}
+                            <div className="flex flex-col items-center text-center flex-1">
+                              <Avatar className="h-12 w-12 mb-2">
+                                <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
+                                <AvatarFallback>{getInitials(matchup.player2)}</AvatarFallback>
+                              </Avatar>
+                              <div className="font-medium text-xs truncate w-full">
+                                {matchup.player2?.firstName} {matchup.player2?.lastName}
+                              </div>
+                              <div className="text-2xl font-bold font-display mt-1">
+                                {matchup.player2Score !== null ? matchup.player2Score.toFixed(1) : "-"}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

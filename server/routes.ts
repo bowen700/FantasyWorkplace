@@ -327,7 +327,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(u => u.role !== 'cio')
         .sort((a, b) => (a.salesRepNumber || 999) - (b.salesRepNumber || 999));
       
-      const matchupsData = generateRoundRobinMatchups(activeUsers, season.id, targetWeek, season.regularSeasonWeeks);
+      // Generate matchups based on week type (regular season vs playoffs)
+      let matchupsData: InsertMatchup[];
+      if (targetWeek > season.regularSeasonWeeks) {
+        // Playoff weeks: use bracket generation
+        matchupsData = await generatePlayoffBracket(season.id, targetWeek);
+      } else {
+        // Regular season: use round-robin
+        matchupsData = generateRoundRobinMatchups(activeUsers, season.id, targetWeek, season.regularSeasonWeeks);
+      }
       
       const created = await storage.bulkCreateMatchups(matchupsData);
       
@@ -516,27 +524,126 @@ function generateRoundRobinMatchups(
     // Week 10: Rivalry week (rematch of week 1)
     const week1Matchups = generateRoundRobinMatchups(users, seasonId, 1, regularSeasonWeeks);
     return week1Matchups.map(m => ({ ...m, week: 10 }));
-  } else {
-    // Playoffs: For now, use simple pairing by current standings
-    // This should be enhanced with bracket logic based on seeding
-    for (let i = 0; i < users.length - 1; i += 2) {
-      matchups.push({
-        seasonId,
-        week,
-        player1Id: users[i].id,
-        player2Id: users[i + 1].id,
-        player1Score: null,
-        player2Score: null,
-        winnerId: null,
-        isPlayoff: true,
-      });
+  }
+  
+  // Playoffs handled separately
+  return matchups;
+}
+
+// Helper function to generate playoff bracket for weeks 11-13 (6-user tournament with top 2 byes)
+async function generatePlayoffBracket(seasonId: string, week: number) {
+  const matchups: InsertMatchup[] = [];
+  
+  // Get top 6 seeds based on regular season standings
+  const allUsers = await storage.getAllUsers();
+  const leaderboardData = await Promise.all(
+    allUsers.map(async (user) => {
+      const userMatchups = await storage.getRecentMatchupsByUser(user.id, seasonId, 100);
+      
+      const wins = userMatchups.filter(m => m.winnerId === user.id).length;
+      const losses = userMatchups.filter(
+        m => m.winnerId && m.winnerId !== user.id && 
+        (m.player1Id === user.id || m.player2Id === user.id)
+      ).length;
+      
+      const totalPoints = userMatchups.reduce((sum, m) => {
+        if (m.player1Id === user.id) return sum + (m.player1Score || 0);
+        if (m.player2Id === user.id) return sum + (m.player2Score || 0);
+        return sum;
+      }, 0);
+      
+      return { user, wins, losses, totalPoints };
+    })
+  );
+  
+  // Sort by wins, then total points
+  const seeds = leaderboardData
+    .sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.totalPoints - a.totalPoints;
+    })
+    .slice(0, 6); // Top 6 qualify for playoffs
+  
+  if (week === 11) {
+    // Quarterfinals: Seed 3 vs Seed 6, Seed 4 vs Seed 5 (Seeds 1-2 get byes)
+    matchups.push({
+      seasonId,
+      week,
+      player1Id: seeds[2].user.id, // Seed 3
+      player2Id: seeds[5].user.id, // Seed 6
+      player1Score: null,
+      player2Score: null,
+      winnerId: null,
+      isPlayoff: true,
+    });
+    matchups.push({
+      seasonId,
+      week,
+      player1Id: seeds[3].user.id, // Seed 4
+      player2Id: seeds[4].user.id, // Seed 5
+      player1Score: null,
+      player2Score: null,
+      winnerId: null,
+      isPlayoff: true,
+    });
+  } else if (week === 12) {
+    // Semifinals: Need winners from week 11
+    const week11Matchups = await storage.getMatchupsByWeek(seasonId, 11);
+    
+    if (week11Matchups.length < 2 || !week11Matchups[0].winnerId || !week11Matchups[1].winnerId) {
+      // Week 11 not complete yet - cannot generate week 12
+      return matchups;
     }
+    
+    // Seed 1 vs Winner(3v6)
+    matchups.push({
+      seasonId,
+      week,
+      player1Id: seeds[0].user.id, // Seed 1
+      player2Id: week11Matchups[0].winnerId, // Winner of 3v6
+      player1Score: null,
+      player2Score: null,
+      winnerId: null,
+      isPlayoff: true,
+    });
+    
+    // Seed 2 vs Winner(4v5)
+    matchups.push({
+      seasonId,
+      week,
+      player1Id: seeds[1].user.id, // Seed 2
+      player2Id: week11Matchups[1].winnerId, // Winner of 4v5
+      player1Score: null,
+      player2Score: null,
+      winnerId: null,
+      isPlayoff: true,
+    });
+  } else if (week === 13) {
+    // Finals: Need winners from week 12
+    const week12Matchups = await storage.getMatchupsByWeek(seasonId, 12);
+    
+    if (week12Matchups.length < 2 || !week12Matchups[0].winnerId || !week12Matchups[1].winnerId) {
+      // Week 12 not complete yet - cannot generate week 13
+      return matchups;
+    }
+    
+    // Championship: Winner(1 vs W3v6) vs Winner(2 vs W4v5)
+    matchups.push({
+      seasonId,
+      week,
+      player1Id: week12Matchups[0].winnerId,
+      player2Id: week12Matchups[1].winnerId,
+      player1Score: null,
+      player2Score: null,
+      winnerId: null,
+      isPlayoff: true,
+    });
   }
   
   return matchups;
 }
 
-// Helper function to calculate matchup scores with normalized KPI values
+// Helper function to calculate matchup scores using point-based system
 async function calculateMatchupScores(seasonId: string, week: number) {
   const matchups = await storage.getMatchupsByWeek(seasonId, week);
   const allKpis = await storage.getAllKpis();
@@ -544,36 +651,13 @@ async function calculateMatchupScores(seasonId: string, week: number) {
   
   if (matchups.length === 0) return;
   
-  // Get all participants for this week
-  const userIds = new Set<string>();
-  matchups.forEach(m => {
-    userIds.add(m.player1Id);
-    userIds.add(m.player2Id);
-  });
-  
-  // Fetch all KPI data for the week
-  const allUserData = await Promise.all(
-    Array.from(userIds).map(userId => 
-      storage.getKpiDataByUserAndWeek(userId, seasonId, week)
-    )
-  );
-  
-  // Calculate min/max for each KPI across all participants
-  const kpiStats = new Map<string, { min: number; max: number }>();
-  for (const kpi of activeKpis) {
-    const values: number[] = [];
-    allUserData.forEach(userData => {
-      const kpiValue = userData.find(d => d.kpiId === kpi.id);
-      if (kpiValue) values.push(kpiValue.value);
-    });
-    
-    if (values.length > 0) {
-      kpiStats.set(kpi.id, {
-        min: Math.min(...values),
-        max: Math.max(...values),
-      });
-    }
-  }
+  // Point conversion factors for each KPI
+  const kpiConversionFactors: Record<string, number> = {
+    "Sales Gross Profit": 300,    // 300 GP = 1 point
+    "Sales Revenue": 3000,         // 3000 revenue = 1 point
+    "Leads Talked To": 3,          // 3 leads = 1 point
+    "Deals Closed": 1,             // 1 deal = 1 point
+  };
   
   // Calculate scores for each matchup
   for (const matchup of matchups) {
@@ -585,35 +669,20 @@ async function calculateMatchupScores(seasonId: string, week: number) {
     let player1Score = 0;
     let player2Score = 0;
     
-    // Normalize total weight to 1.0
-    const totalWeight = activeKpis.reduce((sum, kpi) => sum + kpi.weight, 0);
-    if (totalWeight === 0) {
-      // No active KPIs with weight - skip scoring
-      continue;
-    }
-    
     for (const kpi of activeKpis) {
-      const stats = kpiStats.get(kpi.id);
-      if (!stats) continue;
+      const conversionFactor = kpiConversionFactors[kpi.name];
+      if (!conversionFactor) continue; // Skip KPIs without conversion factor
       
       const p1Data = player1Data.find(d => d.kpiId === kpi.id);
       const p2Data = player2Data.find(d => d.kpiId === kpi.id);
       
-      // Normalize KPI values to 0-1 range
-      const normalizeValue = (value: number | undefined) => {
-        if (value === undefined) return 0;
-        const range = stats.max - stats.min;
-        if (range === 0) return 0.5; // All players have same value
-        return Math.max(0, Math.min(1, (value - stats.min) / range));
-      };
-      
-      const p1Normalized = normalizeValue(p1Data?.value);
-      const p2Normalized = normalizeValue(p2Data?.value);
-      
-      // Apply weight (normalized to 0-1) and scale to 100-point baseline
-      const weightDecimal = kpi.weight / totalWeight;
-      player1Score += p1Normalized * weightDecimal * 100;
-      player2Score += p2Normalized * weightDecimal * 100;
+      // Convert KPI value to points
+      if (p1Data) {
+        player1Score += p1Data.value / conversionFactor;
+      }
+      if (p2Data) {
+        player2Score += p2Data.value / conversionFactor;
+      }
     }
     
     const winnerId = player1Score > player2Score ? matchup.player1Id : 
