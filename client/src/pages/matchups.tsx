@@ -1,13 +1,19 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Trophy } from "lucide-react";
-import type { Matchup, Season, User } from "@shared/schema";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Trophy, Plus, Trash2 } from "lucide-react";
+import type { Matchup, Season, User, Kpi, KpiData, InsertKpiData } from "@shared/schema";
 
 interface MatchupWithPlayers extends Matchup {
   player1?: User;
@@ -15,142 +21,350 @@ interface MatchupWithPlayers extends Matchup {
   winner?: User;
 }
 
+interface KpiInput {
+  kpiId: string;
+  value: string;
+}
+
+interface UserStats {
+  wins: number;
+  losses: number;
+  averageScore: number;
+}
+
 export default function Matchups() {
   const { user } = useAuth();
-  const [selectedWeek, setSelectedWeek] = useState<string>("current");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [kpiInputs, setKpiInputs] = useState<KpiInput[]>([]);
 
   const { data: season } = useQuery<Season>({
     queryKey: ["/api/seasons/active"],
   });
 
-  const weekKey = selectedWeek === "current" ? season?.currentWeek?.toString() : selectedWeek;
+  const { data: kpis } = useQuery<Kpi[]>({
+    queryKey: ["/api/kpis"],
+  });
 
-  const { data: matchups, isLoading } = useQuery<MatchupWithPlayers[]>({
+  const weekKey = season?.currentWeek?.toString();
+
+  const { data: matchups, isLoading: matchupsLoading } = useQuery<MatchupWithPlayers[]>({
     queryKey: ["/api/matchups", weekKey],
     enabled: Boolean(season && weekKey),
   });
 
-  const weekOptions = season
-    ? Array.from({ length: season.regularSeasonWeeks + season.playoffWeeks }, (_, i) => i + 1)
-    : [];
+  const { data: kpiData, isLoading: kpiDataLoading } = useQuery<KpiData[]>({
+    queryKey: ["/api/kpi-data/weekly", weekKey],
+    enabled: Boolean(season && weekKey),
+  });
+
+  const { data: allMatchups } = useQuery<MatchupWithPlayers[]>({
+    queryKey: ["/api/matchups/all"],
+  });
+
+  const myMatchup = matchups?.find(
+    (m) => m.player1Id === user?.id || m.player2Id === user?.id
+  );
+
+  const isPlayer1 = myMatchup?.player1Id === user?.id;
+  const myUser = isPlayer1 ? myMatchup?.player1 : myMatchup?.player2;
+  const opponentUser = isPlayer1 ? myMatchup?.player2 : myMatchup?.player1;
+  const myScore = isPlayer1 ? myMatchup?.player1Score : myMatchup?.player2Score;
+  const opponentScore = isPlayer1 ? myMatchup?.player2Score : myMatchup?.player1Score;
+
+  const calculateUserStats = (userId: string | undefined): UserStats => {
+    if (!userId || !allMatchups) return { wins: 0, losses: 0, averageScore: 0 };
+
+    let wins = 0;
+    let losses = 0;
+    let totalScore = 0;
+    let matchCount = 0;
+
+    allMatchups.forEach((m) => {
+      const isP1 = m.player1Id === userId;
+      const isP2 = m.player2Id === userId;
+
+      if (isP1 || isP2) {
+        if (m.winnerId === userId) wins++;
+        else if (m.winnerId && m.winnerId !== userId) losses++;
+
+        const score = isP1 ? m.player1Score : m.player2Score;
+        if (score !== null) {
+          totalScore += score;
+          matchCount++;
+        }
+      }
+    });
+
+    return {
+      wins,
+      losses,
+      averageScore: matchCount > 0 ? totalScore / matchCount : 0,
+    };
+  };
+
+  const myStats = calculateUserStats(user?.id);
+  const opponentStats = calculateUserStats(isPlayer1 ? myMatchup?.player2Id : myMatchup?.player1Id);
+
+  const getKpiBreakdown = (userId: string | undefined) => {
+    if (!userId || !kpiData || !kpis) return [];
+
+    const userKpiData = kpiData.filter((d) => d.userId === userId);
+    return kpis
+      .filter((kpi) => kpi.isActive)
+      .map((kpi) => {
+        const data = userKpiData.find((d) => d.kpiId === kpi.id);
+        return {
+          name: kpi.name,
+          value: data?.value ?? 0,
+          weight: kpi.weight,
+        };
+      });
+  };
+
+  const myKpiBreakdown = getKpiBreakdown(user?.id);
+  const opponentKpiBreakdown = getKpiBreakdown(
+    isPlayer1 ? myMatchup?.player2Id : myMatchup?.player1Id
+  );
 
   const getInitials = (user?: User) => {
     if (!user) return "?";
     return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
   };
 
+  const submitKpiMutation = useMutation({
+    mutationFn: async (data: InsertKpiData[]) => {
+      return await apiRequest("POST", "/api/kpi-data/bulk", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "KPI data uploaded successfully",
+      });
+      setKpiInputs([]);
+      queryClient.invalidateQueries({ queryKey: ["/api/kpi-data"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addKpiInput = () => {
+    setKpiInputs([...kpiInputs, { kpiId: "", value: "" }]);
+  };
+
+  const removeKpiInput = (index: number) => {
+    setKpiInputs(kpiInputs.filter((_, i) => i !== index));
+  };
+
+  const updateKpiInput = (index: number, field: keyof KpiInput, value: string) => {
+    const newInputs = [...kpiInputs];
+    newInputs[index][field] = value;
+    setKpiInputs(newInputs);
+  };
+
+  const handleSubmit = () => {
+    if (!season || !user) return;
+
+    const data: InsertKpiData[] = kpiInputs
+      .filter((input) => input.kpiId && input.value)
+      .map((input) => ({
+        userId: user.id,
+        kpiId: input.kpiId,
+        seasonId: season.id,
+        week: season.currentWeek,
+        value: parseFloat(input.value),
+      }));
+
+    if (data.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one KPI value",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    submitKpiMutation.mutate(data);
+  };
+
+  const isLoading = matchupsLoading || kpiDataLoading;
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-4xl font-bold mb-2">Matchups</h1>
-          <p className="text-muted-foreground">Head-to-head competition results</p>
-        </div>
-        <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-          <SelectTrigger className="w-40" data-testid="select-week">
-            <SelectValue placeholder="Select week" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="current">Current Week</SelectItem>
-            {weekOptions.map((week) => (
-              <SelectItem key={week} value={week.toString()}>
-                Week {week}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div>
+        <h1 className="font-display text-4xl font-bold mb-2">Week {season?.currentWeek} Matchup</h1>
+        <p className="text-muted-foreground">Your head-to-head competition</p>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
-      ) : matchups && matchups.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {matchups.map((matchup) => (
-            <Card
-              key={matchup.id}
-              className={`overflow-hidden ${
-                (matchup.player1Id === user?.id || matchup.player2Id === user?.id)
-                  ? "border-primary"
-                  : ""
-              }`}
-              data-testid={`matchup-card-${matchup.id}`}
-            >
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Week {matchup.week}</CardTitle>
-                  {matchup.isPlayoff && (
-                    <Badge variant="default">Playoff</Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 items-center">
-                  {/* Player 1 */}
-                  <div className="flex flex-col items-center text-center">
-                    <Avatar className="h-16 w-16 mb-2">
-                      <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
-                      <AvatarFallback>{getInitials(matchup.player1)}</AvatarFallback>
-                    </Avatar>
-                    <div className="font-medium text-sm">
-                      {matchup.player1?.firstName} {matchup.player1?.lastName}
-                    </div>
-                    <div className="text-3xl font-bold font-display mt-2">
-                      {matchup.player1Score !== null ? matchup.player1Score.toFixed(1) : "-"}
-                    </div>
+        <Skeleton className="h-96" />
+      ) : myMatchup && myUser && opponentUser ? (
+        <Card className="border-primary">
+          <CardContent className="p-8">
+            <div className="grid grid-cols-3 gap-8 items-center">
+              {/* Current User */}
+              <div className="flex flex-col items-center text-center space-y-4">
+                <Avatar className="h-32 w-32 border-4 border-primary">
+                  <AvatarImage src={myUser.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-3xl">{getInitials(myUser)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-bold text-xl mb-1">
+                    {myUser.firstName} {myUser.lastName}
                   </div>
-
-                  {/* VS Badge */}
-                  <div className="flex flex-col items-center">
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center font-bold text-sm">
-                      VS
-                    </div>
-                    {matchup.winnerId && (
-                      <Trophy className="h-6 w-6 text-primary mt-2" />
-                    )}
-                  </div>
-
-                  {/* Player 2 */}
-                  <div className="flex flex-col items-center text-center">
-                    <Avatar className="h-16 w-16 mb-2">
-                      <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
-                      <AvatarFallback>{getInitials(matchup.player2)}</AvatarFallback>
-                    </Avatar>
-                    <div className="font-medium text-sm">
-                      {matchup.player2?.firstName} {matchup.player2?.lastName}
-                    </div>
-                    <div className="text-3xl font-bold font-display mt-2">
-                      {matchup.player2Score !== null ? matchup.player2Score.toFixed(1) : "-"}
-                    </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <div>Record: {myStats.wins}-{myStats.losses}</div>
+                    <div>Avg: {myStats.averageScore.toFixed(1)} pts</div>
                   </div>
                 </div>
+                
+                <div className="text-6xl font-bold font-display text-primary">
+                  {myScore !== null && myScore !== undefined ? myScore.toFixed(1) : "-"}
+                </div>
 
-                {matchup.winnerId && (
-                  <div className="mt-4 text-center text-sm text-muted-foreground">
-                    Winner:{" "}
-                    <span className="font-semibold text-foreground">
-                      {matchup.winner?.firstName} {matchup.winner?.lastName}
-                    </span>
+                <div className="w-full space-y-2">
+                  {myKpiBreakdown.map((kpi, index) => (
+                    <div key={index} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{kpi.name}</span>
+                      <span className="font-semibold">{kpi.value.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* VS Badge */}
+              <div className="flex flex-col items-center space-y-4">
+                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center font-bold text-xl">
+                  VS
+                </div>
+                {myMatchup.winnerId && (
+                  <div className="text-center">
+                    <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
+                    <div className="text-sm font-semibold">
+                      {myMatchup.winnerId === user?.id ? "You Win!" : "Opponent Wins"}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+
+              {/* Opponent */}
+              <div className="flex flex-col items-center text-center space-y-4">
+                <Avatar className="h-32 w-32 border-4 border-border">
+                  <AvatarImage src={opponentUser.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-3xl">{getInitials(opponentUser)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-bold text-xl mb-1">
+                    {opponentUser.firstName} {opponentUser.lastName}
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <div>Record: {opponentStats.wins}-{opponentStats.losses}</div>
+                    <div>Avg: {opponentStats.averageScore.toFixed(1)} pts</div>
+                  </div>
+                </div>
+                
+                <div className="text-6xl font-bold font-display">
+                  {opponentScore !== null && opponentScore !== undefined ? opponentScore.toFixed(1) : "-"}
+                </div>
+
+                <div className="w-full space-y-2">
+                  {opponentKpiBreakdown.map((kpi, index) => (
+                    <div key={index} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{kpi.name}</span>
+                      <span className="font-semibold">{kpi.value.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="text-center py-12">
             <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <CardTitle className="mb-2">No Matchups Yet</CardTitle>
+            <CardTitle className="mb-2">No Matchup This Week</CardTitle>
             <CardDescription>
-              Matchups will appear here once the season starts and pairings are generated
+              Your matchup will appear once pairings are generated
             </CardDescription>
           </CardContent>
         </Card>
       )}
+
+      <Separator className="my-8" />
+
+      {/* Manual Entry Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Submit KPI Data</CardTitle>
+          <CardDescription>
+            Enter your performance metrics for Week {season?.currentWeek}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {kpiInputs.map((input, index) => (
+            <div key={index} className="flex items-end gap-4">
+              <div className="flex-1">
+                <Label htmlFor={`kpi-${index}`}>KPI</Label>
+                <Select
+                  value={input.kpiId}
+                  onValueChange={(value) => updateKpiInput(index, "kpiId", value)}
+                >
+                  <SelectTrigger id={`kpi-${index}`} data-testid={`select-kpi-${index}`}>
+                    <SelectValue placeholder="Select KPI" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {kpis?.filter((kpi) => kpi.isActive).map((kpi) => (
+                      <SelectItem key={kpi.id} value={kpi.id}>
+                        {kpi.name} {kpi.unit && `(${kpi.unit})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Label htmlFor={`value-${index}`}>Value</Label>
+                <Input
+                  id={`value-${index}`}
+                  type="number"
+                  step="0.01"
+                  value={input.value}
+                  onChange={(e) => updateKpiInput(index, "value", e.target.value)}
+                  placeholder="Enter value"
+                  data-testid={`input-value-${index}`}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => removeKpiInput(index)}
+                data-testid={`button-remove-${index}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={addKpiInput} data-testid="button-add-kpi">
+              <Plus className="h-4 w-4 mr-2" />
+              Add KPI
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={kpiInputs.length === 0 || submitKpiMutation.isPending}
+              data-testid="button-submit"
+            >
+              {submitKpiMutation.isPending ? "Submitting..." : "Submit KPI Data"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
