@@ -68,8 +68,8 @@ export async function seedInitialData() {
         name: `${now.getFullYear()} Q${Math.floor(now.getMonth() / 3) + 1} Season`,
         startDate: seasonStart,
         endDate: seasonEnd,
-        regularSeasonWeeks: 10,
-        playoffWeeks: 4,
+        regularSeasonWeeks: 9,
+        playoffWeeks: 3,
         currentWeek: 1,
         isActive: true,
       };

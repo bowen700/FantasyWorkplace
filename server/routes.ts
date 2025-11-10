@@ -530,7 +530,7 @@ function generateRoundRobinMatchups(
   return matchups;
 }
 
-// Helper function to generate playoff bracket for weeks 11-13 (6-user tournament with top 2 byes)
+// Helper function to generate playoff bracket for weeks 10-12 (6-user tournament with top 2 byes)
 async function generatePlayoffBracket(seasonId: string, week: number) {
   const matchups: InsertMatchup[] = [];
   
@@ -564,7 +564,7 @@ async function generatePlayoffBracket(seasonId: string, week: number) {
     })
     .slice(0, 6); // Top 6 qualify for playoffs
   
-  if (week === 11) {
+  if (week === 10) {
     // Quarterfinals: Seed 3 vs Seed 6, Seed 4 vs Seed 5 (Seeds 1-2 get byes)
     matchups.push({
       seasonId,
@@ -586,12 +586,12 @@ async function generatePlayoffBracket(seasonId: string, week: number) {
       winnerId: null,
       isPlayoff: true,
     });
-  } else if (week === 12) {
-    // Semifinals: Need winners from week 11
-    const week11Matchups = await storage.getMatchupsByWeek(seasonId, 11);
+  } else if (week === 11) {
+    // Semifinals: Need winners from week 10
+    const week10Matchups = await storage.getMatchupsByWeek(seasonId, 10);
     
-    if (week11Matchups.length < 2 || !week11Matchups[0].winnerId || !week11Matchups[1].winnerId) {
-      // Week 11 not complete yet - cannot generate week 12
+    if (week10Matchups.length < 2 || !week10Matchups[0].winnerId || !week10Matchups[1].winnerId) {
+      // Week 10 not complete yet - cannot generate week 11
       return matchups;
     }
     
@@ -600,7 +600,7 @@ async function generatePlayoffBracket(seasonId: string, week: number) {
       seasonId,
       week,
       player1Id: seeds[0].user.id, // Seed 1
-      player2Id: week11Matchups[0].winnerId, // Winner of 3v6
+      player2Id: week10Matchups[0].winnerId, // Winner of 3v6
       player1Score: null,
       player2Score: null,
       winnerId: null,
@@ -612,18 +612,18 @@ async function generatePlayoffBracket(seasonId: string, week: number) {
       seasonId,
       week,
       player1Id: seeds[1].user.id, // Seed 2
-      player2Id: week11Matchups[1].winnerId, // Winner of 4v5
+      player2Id: week10Matchups[1].winnerId, // Winner of 4v5
       player1Score: null,
       player2Score: null,
       winnerId: null,
       isPlayoff: true,
     });
-  } else if (week === 13) {
-    // Finals: Need winners from week 12
-    const week12Matchups = await storage.getMatchupsByWeek(seasonId, 12);
+  } else if (week === 12) {
+    // Finals: Need winners from week 11
+    const week11Matchups = await storage.getMatchupsByWeek(seasonId, 11);
     
-    if (week12Matchups.length < 2 || !week12Matchups[0].winnerId || !week12Matchups[1].winnerId) {
-      // Week 12 not complete yet - cannot generate week 13
+    if (week11Matchups.length < 2 || !week11Matchups[0].winnerId || !week11Matchups[1].winnerId) {
+      // Week 11 not complete yet - cannot generate week 12
       return matchups;
     }
     
@@ -631,8 +631,8 @@ async function generatePlayoffBracket(seasonId: string, week: number) {
     matchups.push({
       seasonId,
       week,
-      player1Id: week12Matchups[0].winnerId,
-      player2Id: week12Matchups[1].winnerId,
+      player1Id: week11Matchups[0].winnerId,
+      player2Id: week11Matchups[1].winnerId,
       player1Score: null,
       player2Score: null,
       winnerId: null,

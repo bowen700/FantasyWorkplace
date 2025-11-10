@@ -37,7 +37,7 @@ export default function League() {
   }
 
   const weekOptions = season
-    ? Array.from({ length: 13 }, (_, i) => i + 1)
+    ? Array.from({ length: 12 }, (_, i) => i + 1)
     : [];
 
   // Fetch matchups for the selected week

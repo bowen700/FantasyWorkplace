@@ -58,7 +58,7 @@ export default function Matchups() {
   const weekKey = selectedWeek || season?.currentWeek?.toString();
   
   const weekOptions = season
-    ? Array.from({ length: 13 }, (_, i) => i + 1)
+    ? Array.from({ length: 12 }, (_, i) => i + 1)
     : [];
 
   const { data: matchups, isLoading: matchupsLoading } = useQuery<MatchupWithPlayers[]>({
