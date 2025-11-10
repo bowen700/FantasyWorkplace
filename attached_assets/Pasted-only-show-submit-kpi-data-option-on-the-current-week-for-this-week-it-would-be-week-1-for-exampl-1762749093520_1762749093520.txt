@@ -1,0 +1,19 @@
+only show submit kpi data option on the current week (for this week, it would be week 1). for example, users should see it on week 1, but if they toggle to week 2, it should have disappeared. toggling back to week 1 should bring it back. also, bold the current week, so when someone clicks the dropdown toggle, then can easily identify it. this should apply to the week toggle dropdowns in both the matchup and league pages.
+also, delete the dashboard page entirely. i don't want it as a part of the app/website.
+the submit KPI data part of the matchup page should say "Submit/Edit KPI Data" instead of clicking the + add kpi button, the 4 kpis should be listed already. if they have already been inputted, then the inputted numbers should show up in the values box right next to the associated kpi. if no data has been inputted, then they should say zero. for example, the user named Bowen should see:
+"Sales Gross Profit
+$3612.0
+Sales Revenue
+$16170.0
+Leads Talked To
+35
+Deals Closed
+10"
+and the user should be able to change those values. the button that says "submit kpi data" should say, "Submit These KPI Adjustments". if the user changes a kpi value (or multiple kpi values), and then hits this "Submit These KPI Adjustments" button, then it should update and save thos numbers moving forward. these updated numbers should also show in the side-by-side matchup above. but instead of putting the values in bold, the score of each kpis should be in bold. these numbers are based on the conversions mentioned before. Here it is again: 
+"300 gross profit = 1 point
+3,000 revenue = 1 point
+3 leads talked to = 1 point
+1 deal closed = 1 point"
+automatically convert the value scores below to the kpi scores above. then, add the 4 scores together to make the total score that is just above those individual scores. 
+delete week 13 as well. weeks 1-9 will be the regular matchups. 10-12 will be the playoffs.
+also, bowen (and all the other users) should have matchups for weeks 2-9. instead of showing match-ups it currently says "no matchups yet". please set up and assign those match-ups. have each of the original 10 users face each other once (you can delete all of the john doe users). for example, when bowen user clicks on the matchup tab on week 2, week 3, and so on, he should see himself matched up against someone different every week. it could be against liam in week 2 and maybe ava in week 3. when user bowen clicks on the league tab on week 2, week 3, and so on, he should see the different matchups throughout the league. each week should have different matchups

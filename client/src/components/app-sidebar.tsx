@@ -1,4 +1,4 @@
-import { Trophy, Settings, Award, Calendar, LayoutDashboard } from "lucide-react";
+import { Trophy, Settings, Award, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -31,13 +31,6 @@ export function AppSidebar() {
       title: "Matchup",
       url: "/",
       icon: Trophy,
-      visible: true,
-      primary: true,
-    },
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
       visible: true,
       primary: true,
     },
