@@ -58,13 +58,36 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  // Check if user already exists
+  const existingUser = await storage.getUser(claims["sub"]);
+  
+  let salesRepNumber: number | null = existingUser?.salesRepNumber ?? null;
+  
+  // If new user and no salesRepNumber, auto-assign to available spot (1-10)
+  if (!existingUser || existingUser.salesRepNumber === null) {
+    const allUsers = await storage.getAllUsers();
+    const assignedNumbers = allUsers
+      .map(u => u.salesRepNumber)
+      .filter((n): n is number => n !== null);
+    
+    // Find first available number from 1-10
+    for (let i = 1; i <= 10; i++) {
+      if (!assignedNumbers.includes(i)) {
+        salesRepNumber = i;
+        break;
+      }
+    }
+    // If all 10 spots taken, salesRepNumber remains null (waitlist)
+  }
+  
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
-    role: "employee", // default role
+    role: existingUser?.role || "employee", // preserve existing role
+    salesRepNumber,
   });
 }
 

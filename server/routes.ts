@@ -16,7 +16,8 @@ import {
   insertKpiSchema, 
   insertKpiDataSchema, 
   insertMatchupSchema,
-  insertAiCoachConversationSchema
+  insertAiCoachConversationSchema,
+  updateUserSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -50,6 +51,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // ============= User Management Routes =============
+  app.get('/api/users', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch('/api/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = updateUserSchema.parse(req.body);
+      
+      // Check if user exists
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // If salesRepNumber is being updated, check for conflicts
+      if (validatedData.salesRepNumber !== undefined && validatedData.salesRepNumber !== null) {
+        const allUsers = await storage.getAllUsers();
+        const conflictingUser = allUsers.find(
+          u => u.salesRepNumber === validatedData.salesRepNumber && u.id !== id
+        );
+        if (conflictingUser) {
+          return res.status(409).json({ 
+            message: `Sales rep number ${validatedData.salesRepNumber} is already assigned to ${conflictingUser.firstName} ${conflictingUser.lastName}` 
+          });
+        }
+      }
+      
+      const updatedUser = await storage.updateUser(id, validatedData);
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      // Handle unique constraint violation from database
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+        return res.status(409).json({ message: "Sales rep number is already assigned to another user" });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if user exists
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Prevent deleting the last admin
+      const allUsers = await storage.getAllUsers();
+      const adminCount = allUsers.filter(u => u.role === 'admin' || u.role === 'cio').length;
+      if ((existingUser.role === 'admin' || existingUser.role === 'cio') && adminCount <= 1) {
+        return res.status(400).json({ message: "Cannot delete the last admin user" });
+      }
+      
+      await storage.deleteUser(id);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      // Check if error is due to foreign key constraint
+      if (error instanceof Error && error.message.includes('foreign key')) {
+        return res.status(400).json({ 
+          message: "Cannot delete user with existing data. Please remove user's matchups and KPI data first." 
+        });
+      }
+      res.status(500).json({ message: "Failed to delete user" });
     }
   });
 

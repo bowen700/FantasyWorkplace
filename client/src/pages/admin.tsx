@@ -8,17 +8,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Save, Trash2, Play, Settings } from "lucide-react";
-import type { Kpi, Season, InsertKpi, InsertSeason } from "@shared/schema";
+import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users } from "lucide-react";
+import type { Kpi, Season, InsertKpi, InsertSeason, User } from "@shared/schema";
 
 export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newKpiOpen, setNewKpiOpen] = useState(false);
   const [newSeasonOpen, setNewSeasonOpen] = useState(false);
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editRole, setEditRole] = useState<string>("");
+  const [editSalesRepNumber, setEditSalesRepNumber] = useState<string>("");
 
   const { data: kpis } = useQuery<Kpi[]>({
     queryKey: ["/api/kpis"],
@@ -26,6 +36,10 @@ export default function Admin() {
 
   const { data: season } = useQuery<Season>({
     queryKey: ["/api/seasons/active"],
+  });
+
+  const { data: users } = useQuery<User[]>({
+    queryKey: ["/api/users"],
   });
 
   // KPI Mutations
@@ -97,6 +111,37 @@ export default function Admin() {
     },
   });
 
+  // User Mutations
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
+      return await apiRequest("PATCH", `/api/users/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User updated successfully" });
+      setEditUserOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/users/${id}`, null);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User deleted successfully" });
+      setDeleteUserOpen(false);
+      setSelectedUser(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleKpiSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -138,6 +183,7 @@ export default function Admin() {
           <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
           <TabsTrigger value="season" data-testid="tab-season">Season</TabsTrigger>
           <TabsTrigger value="matchups" data-testid="tab-matchups">Matchups</TabsTrigger>
+          <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
         </TabsList>
 
         {/* KPIs Tab */}
@@ -354,6 +400,240 @@ export default function Admin() {
               </p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-6">
+          <div>
+            <h2 className="font-display text-2xl font-bold">User Management</h2>
+            <p className="text-muted-foreground">Manage league participants and waitlist</p>
+          </div>
+
+          {/* Sales Rep Number Legend */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Sales Rep Number Availability (1-10)</CardTitle>
+              <CardDescription>Track which spots are filled and which are available</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => {
+                  const user = users?.find((u) => u.salesRepNumber === num);
+                  return (
+                    <Badge
+                      key={num}
+                      variant={user ? "default" : "outline"}
+                      className="min-w-[80px] justify-center"
+                      data-testid={`badge-rep-${num}`}
+                    >
+                      {num}: {user ? `${user.firstName} ${user.lastName?.charAt(0)}.` : "Available"}
+                    </Badge>
+                  );
+                })}
+              </div>
+              {users && users.filter((u) => u.salesRepNumber === null).length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium mb-2">Waitlist ({users.filter((u) => u.salesRepNumber === null).length} users):</p>
+                  <div className="flex flex-wrap gap-2">
+                    {users
+                      .filter((u) => u.salesRepNumber === null)
+                      .map((u) => (
+                        <Badge key={u.id} variant="secondary" data-testid={`badge-waitlist-${u.id}`}>
+                          {u.firstName} {u.lastName}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Users Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>All Users</CardTitle>
+              <CardDescription>View and manage all registered users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {users && users.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Sales Rep #</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((u) => (
+                      <TableRow key={u.id} data-testid={`row-user-${u.id}`}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={u.profileImageUrl || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {u.firstName?.charAt(0)}{u.lastName?.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="font-medium">
+                              {u.firstName} {u.lastName}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={u.role === 'admin' || u.role === 'cio' ? 'default' : 'secondary'}>
+                            {u.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {u.salesRepNumber !== null ? (
+                            <Badge variant="outline">#{u.salesRepNumber}</Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Waitlist</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {u.salesRepNumber !== null ? (
+                            <Badge variant="default" className="bg-green-500">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary">Pending</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setEditRole(u.role || 'employee');
+                                setEditSalesRepNumber(u.salesRepNumber?.toString() || '');
+                                setEditUserOpen(true);
+                              }}
+                              data-testid={`button-edit-${u.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setDeleteUserOpen(true);
+                              }}
+                              data-testid={`button-delete-${u.id}`}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No users found</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Edit User Dialog */}
+          <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+            <DialogContent data-testid="dialog-edit-user">
+              <DialogHeader>
+                <DialogTitle>Edit User</DialogTitle>
+                <DialogDescription>
+                  Update role and sales rep assignment for {selectedUser?.firstName} {selectedUser?.lastName}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-role">Role</Label>
+                  <Select value={editRole} onValueChange={setEditRole}>
+                    <SelectTrigger id="edit-role" data-testid="select-edit-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="cio">CIO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-sales-rep">Sales Rep Number (1-10 or leave empty for waitlist)</Label>
+                  <Select value={editSalesRepNumber} onValueChange={setEditSalesRepNumber}>
+                    <SelectTrigger id="edit-sales-rep" data-testid="select-edit-sales-rep">
+                      <SelectValue placeholder="Waitlist" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Waitlist</SelectItem>
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => {
+                        const isTaken = users?.some((u) => u.salesRepNumber === num && u.id !== selectedUser?.id);
+                        return (
+                          <SelectItem key={num} value={num.toString()} disabled={isTaken}>
+                            {num} {isTaken ? '(Taken)' : ''}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Assigning a number removes user from waitlist. Removing number puts user on waitlist.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditUserOpen(false)} data-testid="button-cancel-edit">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!selectedUser) return;
+                    const data: Partial<User> = {
+                      role: editRole as 'employee' | 'admin' | 'cio',
+                      salesRepNumber: editSalesRepNumber ? parseInt(editSalesRepNumber) : null,
+                    };
+                    updateUserMutation.mutate({ id: selectedUser.id, data });
+                  }}
+                  disabled={updateUserMutation.isPending}
+                  data-testid="button-save-edit"
+                >
+                  {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete User Confirmation */}
+          <AlertDialog open={deleteUserOpen} onOpenChange={setDeleteUserOpen}>
+            <AlertDialogContent data-testid="dialog-delete-user">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete User?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete {selectedUser?.firstName} {selectedUser?.lastName}? 
+                  This action cannot be undone. The user will need to sign in again to rejoin.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (selectedUser) {
+                      deleteUserMutation.mutate(selectedUser.id);
+                    }
+                  }}
+                  data-testid="button-confirm-delete"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
       </Tabs>
     </div>

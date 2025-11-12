@@ -85,7 +85,13 @@ export function AppSidebar() {
                       asChild
                       isActive={location === item.url}
                       data-testid={`nav-${item.title.toLowerCase()}`}
-                      className={item.primary ? "" : "text-sm opacity-70"}
+                      className={
+                        item.title === "Admin"
+                          ? "bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 data-[active=true]:bg-black data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-black"
+                          : item.primary
+                          ? ""
+                          : "text-sm opacity-70"
+                      }
                     >
                       <Link href={item.url}>
                         <item.icon className={item.primary ? "h-4 w-4" : "h-3.5 w-3.5"} />

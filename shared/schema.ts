@@ -34,13 +34,20 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role", { length: 20 }).notNull().default('employee'), // employee, admin, cio
-  salesRepNumber: integer("sales_rep_number"),
+  salesRepNumber: integer("sales_rep_number").unique(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Schema for admin user updates - only allow updating role and salesRepNumber
+export const updateUserSchema = z.object({
+  role: z.enum(['employee', 'admin', 'cio']).optional(),
+  salesRepNumber: z.number().int().min(1).max(10).nullable().optional(),
+});
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 
 // Seasons table - represents a competition period
 export const seasons = pgTable("seasons", {
