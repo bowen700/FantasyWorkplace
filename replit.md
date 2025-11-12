@@ -162,6 +162,38 @@ All users have been assigned sales rep numbers:
 
 ## Recent Changes
 
+### November 12, 2025 - Admin User Management System
+- **User Management Storage & API**: 
+  - Added `updateUser` and `deleteUser` methods to storage interface
+  - Implemented GET /api/users, PATCH /api/users/:id, DELETE /api/users/:id API routes
+  - Added Zod validation schema (`updateUserSchema`) for user updates
+  - Implemented conflict detection for duplicate salesRepNumber assignments (returns 409 with clear error message)
+  - Added delete protection to prevent removing the last admin
+- **Database Schema Enhancement**:
+  - Added unique constraint on `salesRepNumber` column to enforce league size limit at database level
+  - Prevents duplicate assignments through application-level and database-level checks
+- **Auto-Assignment System**:
+  - Modified `replitAuth.ts` upsertUser to automatically assign new users to available slots 1-10
+  - Sets `salesRepNumber` to null if all 10 slots are filled (waitlist)
+  - Uses deterministic assignment: finds lowest available number
+- **Waitlist Notification**:
+  - Added Alert component to matchups page when `user.salesRepNumber === null`
+  - Displays clear message directing users to contact admin for activation
+- **Admin User Management UI** (New "Users" tab in Admin page):
+  - Sales rep number availability legend (1-10) showing taken/available spots
+  - Waitlist panel showing users with null salesRepNumber
+  - Users table with avatar, name, email, role, sales rep #, status, and actions
+  - Edit dialog for updating role (employee/admin/cio) and sales rep assignment
+  - Frontend prevents selecting already-assigned numbers (disabled in dropdown)
+  - Delete confirmation dialog with warning about data loss
+  - Toast notifications for success/error feedback
+- **Admin Tab Styling**:
+  - Styled Admin menu item in sidebar with black background and white text
+  - Dark mode compatible (inverts to white background with black text)
+  - Visually distinct from other navigation items
+- **Role Update**:
+  - Changed Bowen Oswald (bowenbarry19@gmail.com) role to admin in database
+
 ### November 10, 2025 - Season Structure Changes & Enhanced Matchup Page
 - **Season Structure Update**: Changed from 10 regular + 4 playoff to 9 regular + 3 playoff weeks (total 12 weeks)
   - Regular season: Weeks 1-9

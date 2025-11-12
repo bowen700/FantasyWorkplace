@@ -566,12 +566,12 @@ export default function Admin() {
                 </div>
                 <div>
                   <Label htmlFor="edit-sales-rep">Sales Rep Number (1-10 or leave empty for waitlist)</Label>
-                  <Select value={editSalesRepNumber} onValueChange={setEditSalesRepNumber}>
+                  <Select value={editSalesRepNumber || "none"} onValueChange={setEditSalesRepNumber}>
                     <SelectTrigger id="edit-sales-rep" data-testid="select-edit-sales-rep">
                       <SelectValue placeholder="Waitlist" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Waitlist</SelectItem>
+                      <SelectItem value="none">Waitlist</SelectItem>
                       {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => {
                         const isTaken = users?.some((u) => u.salesRepNumber === num && u.id !== selectedUser?.id);
                         return (
@@ -596,7 +596,7 @@ export default function Admin() {
                     if (!selectedUser) return;
                     const data: Partial<User> = {
                       role: editRole as 'employee' | 'admin' | 'cio',
-                      salesRepNumber: editSalesRepNumber ? parseInt(editSalesRepNumber) : null,
+                      salesRepNumber: editSalesRepNumber && editSalesRepNumber !== "none" ? parseInt(editSalesRepNumber) : null,
                     };
                     updateUserMutation.mutate({ id: selectedUser.id, data });
                   }}
