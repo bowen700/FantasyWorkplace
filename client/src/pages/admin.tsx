@@ -64,62 +64,6 @@ export default function Admin() {
     },
   });
 
-  const handleAdminPasswordSubmit = () => {
-    verifyAdminPasswordMutation.mutate(adminPassword);
-  };
-
-  // Show password prompt if access not granted
-  if (adminAccessLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!adminAccess?.hasAccess) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Admin Access Required</CardTitle>
-            <CardDescription>
-              Please enter the admin password to access this page
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="admin-password">Password</Label>
-              <Input
-                id="admin-password"
-                type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAdminPasswordSubmit()}
-                placeholder="Enter admin password"
-                data-testid="input-admin-password"
-              />
-              {adminPasswordError && (
-                <p className="text-sm text-destructive mt-1">{adminPasswordError}</p>
-              )}
-            </div>
-            <Button
-              onClick={handleAdminPasswordSubmit}
-              disabled={verifyAdminPasswordMutation.isPending}
-              className="w-full"
-              data-testid="button-submit-admin-password"
-            >
-              {verifyAdminPasswordMutation.isPending ? "Verifying..." : "Access Admin Panel"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // KPI Mutations
   const createKpiMutation = useMutation({
     mutationFn: async (data: InsertKpi) => {
@@ -248,6 +192,62 @@ export default function Admin() {
     };
     createSeasonMutation.mutate(data);
   };
+
+  const handleAdminPasswordSubmit = () => {
+    verifyAdminPasswordMutation.mutate(adminPassword);
+  };
+
+  // Show password prompt if access not granted
+  if (adminAccessLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!adminAccess?.hasAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Admin Access Required</CardTitle>
+            <CardDescription>
+              Please enter the admin password to access this page
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="admin-password">Password</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdminPasswordSubmit()}
+                placeholder="Enter admin password"
+                data-testid="input-admin-password"
+              />
+              {adminPasswordError && (
+                <p className="text-sm text-destructive mt-1">{adminPasswordError}</p>
+              )}
+            </div>
+            <Button
+              onClick={handleAdminPasswordSubmit}
+              disabled={verifyAdminPasswordMutation.isPending}
+              className="w-full"
+              data-testid="button-submit-admin-password"
+            >
+              {verifyAdminPasswordMutation.isPending ? "Verifying..." : "Access Admin Panel"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
