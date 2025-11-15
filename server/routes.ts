@@ -157,6 +157,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/auth/verify-admin-password', async (req: any, res) => {
+    try {
+      const { password } = req.body;
+      const ADMIN_PASSWORD = "accessgranted!";
+      
+      if (password === ADMIN_PASSWORD) {
+        req.session.adminAccessGranted = true;
+        await req.session.save();
+        res.json({ success: true });
+      } else {
+        res.status(401).json({ message: "Incorrect password" });
+      }
+    } catch (error) {
+      console.error("Error verifying admin password:", error);
+      res.status(500).json({ message: "Failed to verify password" });
+    }
+  });
+
+  app.get('/api/auth/check-admin-access', async (req: any, res) => {
+    try {
+      const hasAccess = req.session.adminAccessGranted === true;
+      res.json({ hasAccess });
+    } catch (error) {
+      console.error("Error checking admin access:", error);
+      res.status(500).json({ message: "Failed to check admin access" });
+    }
+  });
+
   // ============= User Management Routes =============
   app.get('/api/users', async (req: any, res) => {
     try {

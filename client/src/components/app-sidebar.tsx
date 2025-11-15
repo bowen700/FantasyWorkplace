@@ -52,7 +52,7 @@ export function AppSidebar() {
       title: "Admin",
       url: "/admin",
       icon: Settings,
-      visible: user?.role === "admin" || user?.role === "cio",
+      visible: true,
       primary: false,
     },
   ];
