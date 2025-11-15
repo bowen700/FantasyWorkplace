@@ -490,7 +490,7 @@ export default function Admin() {
           {/* Sales Rep Number Legend */}
           <Card>
             <CardHeader>
-              <CardTitle>Sales Rep Number Availability (1-10)</CardTitle>
+              <CardTitle>User Spots</CardTitle>
               <CardDescription>Track which spots are filled and which are available</CardDescription>
             </CardHeader>
             <CardContent>
