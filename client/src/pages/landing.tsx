@@ -203,14 +203,9 @@ export default function Landing() {
                         {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <CardTitle className="text-base">
-                        {user.firstName} {user.lastName}
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        Sales Rep #{user.salesRepNumber}
-                      </CardDescription>
-                    </div>
+                    <CardTitle className="text-base">
+                      {user.firstName} {user.lastName}
+                    </CardTitle>
                   </div>
                 </CardHeader>
               </Card>
