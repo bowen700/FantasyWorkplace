@@ -48,13 +48,6 @@ export function AppSidebar() {
       visible: true,
       primary: false,
     },
-    {
-      title: "Admin",
-      url: "/admin",
-      icon: Settings,
-      visible: true,
-      primary: false,
-    },
   ];
 
   return (
@@ -85,13 +78,7 @@ export function AppSidebar() {
                       asChild
                       isActive={location === item.url}
                       data-testid={`nav-${item.title.toLowerCase()}`}
-                      className={
-                        item.title === "Admin"
-                          ? "dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 data-[active=true]:bg-black data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-black bg-[#9a9ca3]"
-                          : item.primary
-                          ? ""
-                          : "text-sm opacity-70"
-                      }
+                      className={item.primary ? "" : "text-sm opacity-70"}
                     >
                       <Link href={item.url}>
                         <item.icon className={item.primary ? "h-4 w-4" : "h-3.5 w-3.5"} />
@@ -104,7 +91,22 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-6">
+      <SidebarFooter className="p-6 space-y-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={location === "/admin"}
+              data-testid="nav-admin"
+              className="dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 data-[active=true]:bg-black data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-black bg-[#9a9ca3]"
+            >
+              <Link href="/admin">
+                <Settings className="h-3.5 w-3.5" />
+                <span>Admin</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         {activeSeason && (
           <div className="text-sm text-muted-foreground">
             <div className="font-medium">{activeSeason.name}</div>
