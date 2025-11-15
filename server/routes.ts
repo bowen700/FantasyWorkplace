@@ -304,6 +304,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/seasons/:id', requireAuth, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertSeasonSchema.partial().parse(req.body);
+      const season = await storage.updateSeason(id, validatedData);
+      res.json(season);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error updating season:", error);
+      res.status(500).json({ message: "Failed to update season" });
+    }
+  });
+
   // ============= KPI Routes =============
   app.get('/api/kpis', requireAuth, async (req, res) => {
     try {

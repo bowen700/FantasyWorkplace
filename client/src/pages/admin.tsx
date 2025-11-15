@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export default function Admin() {
   const [editSalesRepNumber, setEditSalesRepNumber] = useState<string>("");
   const [adminPassword, setAdminPassword] = useState<string>("");
   const [adminPasswordError, setAdminPasswordError] = useState<string>("");
+  const [currentWeekSlider, setCurrentWeekSlider] = useState<number>(1);
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -120,6 +121,19 @@ export default function Admin() {
     },
   });
 
+  const updateSeasonMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Season> }) => {
+      return await apiRequest("PATCH", `/api/seasons/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Current week updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/seasons"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const generateMatchupsMutation = useMutation({
     mutationFn: async (week: number) => {
       return await apiRequest("POST", "/api/matchups/generate", { week });
@@ -196,6 +210,18 @@ export default function Admin() {
   const handleAdminPasswordSubmit = () => {
     verifyAdminPasswordMutation.mutate(adminPassword);
   };
+
+  const handleSaveWeek = () => {
+    if (!season) return;
+    updateSeasonMutation.mutate({ id: season.id, data: { currentWeek: currentWeekSlider } });
+  };
+
+  // Sync slider with season's current week
+  useEffect(() => {
+    if (season) {
+      setCurrentWeekSlider(season.currentWeek);
+    }
+  }, [season]);
 
   // Show password prompt if access not granted
   if (adminAccessLoading) {
@@ -328,7 +354,7 @@ export default function Admin() {
                 {new Date(season.endDate).toLocaleDateString()}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Current Week:</span>{" "}
@@ -346,6 +372,30 @@ export default function Admin() {
                   <span className="text-muted-foreground">Status:</span>{" "}
                   <span className="font-semibold">{season.isActive ? "Active" : "Inactive"}</span>
                 </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="week-slider">Adjust Current Week: {currentWeekSlider}</Label>
+                  <Slider
+                    id="week-slider"
+                    min={1}
+                    max={season.regularSeasonWeeks + season.playoffWeeks}
+                    step={1}
+                    value={[currentWeekSlider]}
+                    onValueChange={([value]) => setCurrentWeekSlider(value)}
+                    className="mt-2"
+                    data-testid="slider-current-week"
+                  />
+                </div>
+                <Button
+                  onClick={handleSaveWeek}
+                  disabled={updateSeasonMutation.isPending || currentWeekSlider === season.currentWeek}
+                  className="w-full"
+                  data-testid="button-save-week"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateSeasonMutation.isPending ? "Saving..." : "Save Week"}
+                </Button>
               </div>
             </CardContent>
           </Card>
