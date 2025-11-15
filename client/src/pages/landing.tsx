@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, BarChart3, Award, Zap } from "lucide-react";
+import { Trophy, BarChart3 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -108,57 +108,6 @@ export default function Landing() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="h-6 w-6 text-primary" />
-                <CardTitle>Track Your Progress</CardTitle>
-              </div>
-              <CardDescription>
-                Visualize your KPI trends and performance analytics
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Monitor your performance with beautiful charts and real-time leaderboards. See how you stack up against the competition throughout the season.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="h-6 w-6 text-primary" />
-                <CardTitle>Earn Badges</CardTitle>
-              </div>
-              <CardDescription>
-                Unlock achievements for your accomplishments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Collect badges for consistency, comebacks, and dominance. Showcase your achievements and compete for the championship trophy.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-6 w-6 text-primary" />
-                <CardTitle>AI Coach</CardTitle>
-              </div>
-              <CardDescription>
-                Get personalized performance insights
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Receive AI-powered coaching to improve your KPIs. Get actionable suggestions tailored to your performance data.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-2">
                 <Trophy className="h-6 w-6 text-primary" />
                 <CardTitle>Playoff Tournament</CardTitle>
               </div>
@@ -189,25 +138,6 @@ export default function Landing() {
               </p>
             </CardContent>
           </Card>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-muted/50 py-16">
-        <div className="max-w-4xl mx-auto text-center px-4">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-            Ready to Join the Competition?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Make performance tracking fun, engaging, and motivating for your entire team
-          </p>
-          <Button
-            size="lg"
-            onClick={handleGetStarted}
-            data-testid="button-get-started-cta"
-          >
-            Get Started
-          </Button>
         </div>
       </div>
 
