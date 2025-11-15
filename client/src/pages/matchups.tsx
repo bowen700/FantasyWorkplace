@@ -245,18 +245,6 @@ export default function Matchups() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Waitlist notification for users without assigned sales rep number */}
-      {user && user.salesRepNumber === null && (
-        <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950" data-testid="alert-waitlist">
-          <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-          <AlertTitle className="text-yellow-900 dark:text-yellow-100">You're on the Waitlist</AlertTitle>
-          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-            All 10 league spots are currently filled. The administrator will assign you a spot when one becomes available. 
-            You'll be able to participate in matchups once you're assigned.
-          </AlertDescription>
-        </Alert>
-      )}
-      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold mb-2">Week {selectedWeek || season?.currentWeek} Matchup</h1>
