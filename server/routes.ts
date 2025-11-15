@@ -70,6 +70,19 @@ const isAdmin = (req: any, res: any, next: any) => {
   }
 };
 
+// Middleware to check if admin password has been entered (must be used after requireAuth)
+const requireAdminPassword = (req: any, res: any, next: any) => {
+  if (!req.authUser) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (req.session.adminAccessGranted === true) {
+    next();
+  } else {
+    res.status(403).json({ message: "Admin password required" });
+  }
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -112,6 +125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Store the selected user ID in the session
       req.session.selectedUserId = userId;
+      // Clear admin access when switching users
+      req.session.adminAccessGranted = false;
       await req.session.save();
       
       res.json({ success: true, user });
@@ -149,6 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/logout', async (req: any, res) => {
     try {
       req.session.selectedUserId = null;
+      req.session.adminAccessGranted = false;
       await req.session.save();
       res.json({ success: true });
     } catch (error) {
@@ -204,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/users/:id', requireAuth, isAdmin, async (req, res) => {
+  app.patch('/api/users/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = updateUserSchema.parse(req.body);
@@ -244,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/users/:id', requireAuth, isAdmin, async (req, res) => {
+  app.delete('/api/users/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -289,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/seasons', requireAuth, isAdmin, async (req, res) => {
+  app.post('/api/seasons', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const validatedData = insertSeasonSchema.parse(req.body);
       const season = await storage.createSeason(validatedData);
@@ -304,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/seasons/:id', requireAuth, isAdmin, async (req, res) => {
+  app.patch('/api/seasons/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertSeasonSchema.partial().parse(req.body);
@@ -331,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/kpis', requireAuth, isAdmin, async (req, res) => {
+  app.post('/api/kpis', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const validatedData = insertKpiSchema.parse(req.body);
       const kpi = await storage.createKpi(validatedData);
@@ -346,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/kpis/:id', requireAuth, isAdmin, async (req, res) => {
+  app.patch('/api/kpis/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertKpiSchema.partial().parse(req.body);
@@ -362,7 +378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/kpis/:id', requireAuth, isAdmin, async (req, res) => {
+  app.delete('/api/kpis/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;
       await storage.deleteKpi(id);
@@ -510,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/matchups/recalculate', requireAuth, isAdmin, async (req, res) => {
+  app.post('/api/matchups/recalculate', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const bodySchema = z.object({ week: z.number().optional() });
       const { week } = bodySchema.parse(req.body);
@@ -533,7 +549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/matchups/generate', requireAuth, isAdmin, async (req, res) => {
+  app.post('/api/matchups/generate', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const bodySchema = z.object({ 
         week: z.number().optional(),

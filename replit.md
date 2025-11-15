@@ -95,17 +95,18 @@ Fantasy Workplace is a gamified performance management platform that transforms 
 - Performance analysis
 - Motivational insights
 
-## Role-Based Access
-- **Employee**: View matchups, upload data, see leaderboard, collect badges
-- **Admin**: All employee features + KPI management, season setup, matchup generation
-- **CIO**: Admin access for oversight (excluded from competition)
+## Admin Access Model
+- **Admin Access**: Password-based (accessgranted!) - any authenticated user can access admin functions after entering the admin password
+- **Admin Functions**: KPI management, season setup, week adjustment, matchup generation, user management
+- **Security**: Server-side `requireAdminPassword` middleware verifies session flag on all admin routes
+- **Session Management**: Admin access flag is cleared on logout and when users switch profiles
 
 ## Authentication Flow
 1. Landing page shown to unauthenticated users
-2. "Sign In" redirects to `/api/login` (Replit Auth)
-3. After auth, redirected to dashboard
+2. User enters team password ($@le$te@m2026)
+3. User selects their profile from available users
 4. Session managed via PostgreSQL-backed Express sessions
-5. Auto-refresh of expired tokens
+5. Admin page requires separate admin password (accessgranted!) for access
 
 ## Database Operations
 - **Push schema**: `npm run db:push`
@@ -161,6 +162,21 @@ All users have been assigned sales rep numbers:
 - All KPI data is loaded and ready for matchup generation and leaderboard calculations
 
 ## Recent Changes
+
+### November 15, 2025 - Admin Access Security Enhancement
+- **Admin Access Model Change**: Changed from role-based to password-based admin access
+  - Any authenticated user can access admin functions after entering admin password (accessgranted!)
+  - Admin password prompt shown when clicking Admin in sidebar
+  - Server-side security via `requireAdminPassword` middleware
+- **Session Security**:
+  - Created `requireAdminPassword` middleware to verify `req.session.adminAccessGranted` flag
+  - Applied middleware to all admin routes (users, seasons, KPIs, matchups)
+  - Admin access flag cleared on logout (`/api/auth/logout`)
+  - Admin access flag cleared when switching user profiles (`/api/auth/select-user`)
+  - Prevents privilege persistence across user sessions
+- **Admin Routes Updated**:
+  - All admin CRUD routes now use `requireAuth, requireAdminPassword` middleware chain
+  - Provides server-side verification to prevent API bypass
 
 ### November 12, 2025 - Admin User Management System
 - **User Management Storage & API**: 
