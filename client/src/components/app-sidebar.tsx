@@ -87,7 +87,7 @@ export function AppSidebar() {
                       data-testid={`nav-${item.title.toLowerCase()}`}
                       className={
                         item.title === "Admin"
-                          ? "dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 data-[active=true]:bg-black data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-black bg-[#4d505c]"
+                          ? "dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 data-[active=true]:bg-black data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-black bg-[#9a9ca3]"
                           : item.primary
                           ? ""
                           : "text-sm opacity-70"
