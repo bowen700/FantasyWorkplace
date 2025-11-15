@@ -2,7 +2,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth } from "./replitAuth";
 import { getAICoachFeedback } from "./openai";
 import type { User, InsertKpi, InsertSeason, InsertKpiData, InsertMatchup, Matchup } from "@shared/schema";
 
@@ -22,20 +22,52 @@ import {
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
-// Helper to check admin role
-const isAdmin = (req: any, res: any, next: any) => {
-  const userId = req.user?.claims?.sub;
+// Helper to get current user from session or Replit Auth
+const getCurrentUserId = (req: any): string | null => {
+  // Check session first
+  if (req.session.selectedUserId) {
+    return req.session.selectedUserId;
+  }
+  // Fall back to Replit Auth
+  if (req.user?.claims?.sub) {
+    return req.user.claims.sub;
+  }
+  return null;
+};
+
+// Custom authentication middleware
+const requireAuth = async (req: any, res: any, next: any) => {
+  const userId = getCurrentUserId(req);
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-
-  storage.getUser(userId).then((user) => {
-    if (user?.role === "admin" || user?.role === "cio") {
-      next();
-    } else {
-      res.status(403).json({ message: "Admin access required" });
+  
+  try {
+    // Attach the authenticated user to the request
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
     }
-  });
+    req.authUser = user;
+    req.authUserId = userId;
+    next();
+  } catch (error) {
+    console.error("Error in requireAuth:", error);
+    res.status(500).json({ message: "Authentication error" });
+  }
+};
+
+// Helper to check admin role (must be used after requireAuth)
+const isAdmin = (req: any, res: any, next: any) => {
+  if (!req.authUser) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (req.authUser.role === "admin" || req.authUser.role === "cio") {
+    next();
+  } else {
+    res.status(403).json({ message: "Admin access required" });
+  }
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -43,20 +75,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // ============= Auth Routes =============
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/verify-password', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const { password } = req.body;
+      const TEAM_PASSWORD = "$@le$te@m2026";
+      
+      if (password === TEAM_PASSWORD) {
+        req.session.passwordVerified = true;
+        await req.session.save();
+        res.json({ success: true });
+      } else {
+        res.status(401).json({ message: "Incorrect password" });
+      }
+    } catch (error) {
+      console.error("Error verifying password:", error);
+      res.status(500).json({ message: "Failed to verify password" });
+    }
+  });
+
+  app.post('/api/auth/select-user', async (req: any, res) => {
+    try {
+      // Check if password was verified
+      if (!req.session.passwordVerified) {
+        return res.status(401).json({ message: "Password verification required" });
+      }
+      
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Store the selected user ID in the session
+      req.session.selectedUserId = userId;
+      await req.session.save();
+      
+      res.json({ success: true, user });
+    } catch (error) {
+      console.error("Error selecting user:", error);
+      res.status(500).json({ message: "Failed to select user" });
+    }
+  });
+
+  app.get('/api/auth/user', async (req: any, res) => {
+    try {
+      // Check if user is selected via session
+      if (req.session.selectedUserId) {
+        const user = await storage.getUser(req.session.selectedUserId);
+        if (user) {
+          return res.json(user);
+        }
+      }
+      
+      // Fall back to Replit Auth if available
+      if (req.user?.claims?.sub) {
+        const user = await storage.getUser(req.user.claims.sub);
+        if (user) {
+          return res.json(user);
+        }
+      }
+      
+      res.status(401).json({ message: "Not authenticated" });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
-  // ============= User Management Routes =============
-  app.get('/api/users', isAuthenticated, isAdmin, async (req, res) => {
+  app.post('/api/auth/logout', async (req: any, res) => {
     try {
+      req.session.selectedUserId = null;
+      await req.session.save();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      res.status(500).json({ message: "Failed to logout" });
+    }
+  });
+
+  // ============= User Management Routes =============
+  app.get('/api/users', async (req: any, res) => {
+    try {
+      // Allow access if password is verified OR if user is authenticated
+      const isPasswordVerified = req.session.passwordVerified === true;
+      const isUserAuth = getCurrentUserId(req) !== null;
+      
+      if (!isPasswordVerified && !isUserAuth) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const allUsers = await storage.getAllUsers();
       res.json(allUsers);
     } catch (error) {
@@ -65,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+  app.patch('/api/users/:id', requireAuth, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = updateUserSchema.parse(req.body);
@@ -105,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+  app.delete('/api/users/:id', requireAuth, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -137,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= Season Routes =============
-  app.get('/api/seasons/active', isAuthenticated, async (req, res) => {
+  app.get('/api/seasons/active', requireAuth, async (req, res) => {
     try {
       const season = await storage.getActiveSeason();
       if (!season) {
@@ -150,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/seasons', isAuthenticated, isAdmin, async (req, res) => {
+  app.post('/api/seasons', requireAuth, isAdmin, async (req, res) => {
     try {
       const validatedData = insertSeasonSchema.parse(req.body);
       const season = await storage.createSeason(validatedData);
@@ -166,7 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= KPI Routes =============
-  app.get('/api/kpis', isAuthenticated, async (req, res) => {
+  app.get('/api/kpis', requireAuth, async (req, res) => {
     try {
       const allKpis = await storage.getAllKpis();
       res.json(allKpis);
@@ -176,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/kpis', isAuthenticated, isAdmin, async (req, res) => {
+  app.post('/api/kpis', requireAuth, isAdmin, async (req, res) => {
     try {
       const validatedData = insertKpiSchema.parse(req.body);
       const kpi = await storage.createKpi(validatedData);
@@ -191,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/kpis/:id', isAuthenticated, isAdmin, async (req, res) => {
+  app.patch('/api/kpis/:id', requireAuth, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertKpiSchema.partial().parse(req.body);
@@ -207,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/kpis/:id', isAuthenticated, isAdmin, async (req, res) => {
+  app.delete('/api/kpis/:id', requireAuth, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       await storage.deleteKpi(id);
@@ -219,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= KPI Data Routes =============
-  app.get('/api/kpi-data/weekly/:week?', isAuthenticated, async (req: any, res) => {
+  app.get('/api/kpi-data/weekly/:week?', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const season = await storage.getActiveSeason();
@@ -236,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/kpi-data/bulk', isAuthenticated, async (req, res) => {
+  app.post('/api/kpi-data/bulk', requireAuth, async (req, res) => {
     try {
       const bulkSchema = z.array(insertKpiDataSchema);
       const validatedData = bulkSchema.parse(req.body);
@@ -262,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= Matchup Routes =============
-  app.get('/api/matchups/all', isAuthenticated, async (req, res) => {
+  app.get('/api/matchups/all', requireAuth, async (req, res) => {
     try {
       const season = await storage.getActiveSeason();
       if (!season) {
@@ -304,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/matchups/recent', isAuthenticated, async (req: any, res) => {
+  app.get('/api/matchups/recent', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const season = await storage.getActiveSeason();
@@ -320,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/matchups/:week?', isAuthenticated, async (req, res) => {
+  app.get('/api/matchups/:week?', requireAuth, async (req, res) => {
     try {
       const season = await storage.getActiveSeason();
       if (!season) {
@@ -355,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/matchups/recalculate', isAuthenticated, isAdmin, async (req, res) => {
+  app.post('/api/matchups/recalculate', requireAuth, isAdmin, async (req, res) => {
     try {
       const bodySchema = z.object({ week: z.number().optional() });
       const { week } = bodySchema.parse(req.body);
@@ -378,7 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/matchups/generate', isAuthenticated, isAdmin, async (req, res) => {
+  app.post('/api/matchups/generate', requireAuth, isAdmin, async (req, res) => {
     try {
       const bodySchema = z.object({ 
         week: z.number().optional(),
@@ -437,7 +548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= Leaderboard Route =============
-  app.get('/api/leaderboard', isAuthenticated, async (req, res) => {
+  app.get('/api/leaderboard', requireAuth, async (req, res) => {
     try {
       const season = await storage.getActiveSeason();
       if (!season) {
@@ -489,7 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= Badge Routes =============
-  app.get('/api/badges', isAuthenticated, async (req, res) => {
+  app.get('/api/badges', requireAuth, async (req, res) => {
     try {
       const allBadges = await storage.getAllBadges();
       res.json(allBadges);
@@ -499,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/user-badges/:userId', isAuthenticated, async (req, res) => {
+  app.get('/api/user-badges/:userId', requireAuth, async (req, res) => {
     try {
       const { userId } = req.params;
       const userBadges = await storage.getUserBadges(userId);
@@ -511,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============= AI Coach Route =============
-  app.post('/api/ai-coach', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai-coach', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const season = await storage.getActiveSeason();

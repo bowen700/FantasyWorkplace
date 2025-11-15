@@ -11,6 +11,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { User, LogOut } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export function Header() {
   const { user } = useAuth();
@@ -18,6 +19,17 @@ export function Header() {
   const getInitials = () => {
     if (!user) return "U";
     return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
+  };
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout", null);
+      queryClient.clear();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+      window.location.href = "/";
+    }
   };
 
   return (
@@ -44,7 +56,7 @@ export function Header() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => (window.location.href = "/api/logout")}
+            onClick={handleLogout}
             data-testid="button-logout"
           >
             <LogOut className="mr-2 h-4 w-4" />
