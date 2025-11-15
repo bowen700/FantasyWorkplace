@@ -256,10 +256,105 @@ export default function Admin() {
         <p className="text-muted-foreground">Manage KPIs, seasons, and matchups</p>
       </div>
 
+      {/* Season Management Section */}
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="font-display text-2xl font-bold">Season Management</h2>
+          <Dialog open={newSeasonOpen} onOpenChange={setNewSeasonOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-season">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Season
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Season</DialogTitle>
+                <DialogDescription>Set up a new competition period</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSeasonSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="season-name">Name</Label>
+                  <Input id="season-name" name="name" required data-testid="input-season-name" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input id="startDate" name="startDate" type="date" required data-testid="input-start-date" />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">End Date</Label>
+                    <Input id="endDate" name="endDate" type="date" required data-testid="input-end-date" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="regularSeasonWeeks">Regular Season Weeks</Label>
+                    <Input
+                      id="regularSeasonWeeks"
+                      name="regularSeasonWeeks"
+                      type="number"
+                      defaultValue="10"
+                      required
+                      data-testid="input-regular-weeks"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="playoffWeeks">Playoff Weeks</Label>
+                    <Input
+                      id="playoffWeeks"
+                      name="playoffWeeks"
+                      type="number"
+                      defaultValue="4"
+                      required
+                      data-testid="input-playoff-weeks"
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" data-testid="button-submit-season">
+                  Create Season
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {season && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{season.name}</CardTitle>
+              <CardDescription>
+                {new Date(season.startDate).toLocaleDateString()} -{" "}
+                {new Date(season.endDate).toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Current Week:</span>{" "}
+                  <span className="font-semibold">{season.currentWeek}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Regular Season:</span>{" "}
+                  <span className="font-semibold">{season.regularSeasonWeeks} weeks</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Playoffs:</span>{" "}
+                  <span className="font-semibold">{season.playoffWeeks} weeks</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-semibold">{season.isActive ? "Active" : "Inactive"}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       <Tabs defaultValue="kpis" className="space-y-6">
         <TabsList>
           <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
-          <TabsTrigger value="season" data-testid="tab-season">Season</TabsTrigger>
           <TabsTrigger value="matchups" data-testid="tab-matchups">Matchups</TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
         </TabsList>
@@ -352,102 +447,6 @@ export default function Admin() {
               </Card>
             ))}
           </div>
-        </TabsContent>
-
-        {/* Season Tab */}
-        <TabsContent value="season" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="font-display text-2xl font-bold">Season Management</h2>
-            <Dialog open={newSeasonOpen} onOpenChange={setNewSeasonOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-create-season">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Season
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Season</DialogTitle>
-                  <DialogDescription>Set up a new competition period</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSeasonSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="season-name">Name</Label>
-                    <Input id="season-name" name="name" required data-testid="input-season-name" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="startDate">Start Date</Label>
-                      <Input id="startDate" name="startDate" type="date" required data-testid="input-start-date" />
-                    </div>
-                    <div>
-                      <Label htmlFor="endDate">End Date</Label>
-                      <Input id="endDate" name="endDate" type="date" required data-testid="input-end-date" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="regularSeasonWeeks">Regular Season Weeks</Label>
-                      <Input
-                        id="regularSeasonWeeks"
-                        name="regularSeasonWeeks"
-                        type="number"
-                        defaultValue="10"
-                        required
-                        data-testid="input-regular-weeks"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="playoffWeeks">Playoff Weeks</Label>
-                      <Input
-                        id="playoffWeeks"
-                        name="playoffWeeks"
-                        type="number"
-                        defaultValue="4"
-                        required
-                        data-testid="input-playoff-weeks"
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" data-testid="button-submit-season">
-                    Create Season
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {season && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{season.name}</CardTitle>
-                <CardDescription>
-                  {new Date(season.startDate).toLocaleDateString()} -{" "}
-                  {new Date(season.endDate).toLocaleDateString()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Current Week:</span>{" "}
-                    <span className="font-semibold">{season.currentWeek}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Regular Season:</span>{" "}
-                    <span className="font-semibold">{season.regularSeasonWeeks} weeks</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Playoffs:</span>{" "}
-                    <span className="font-semibold">{season.playoffWeeks} weeks</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>{" "}
-                    <span className="font-semibold">{season.isActive ? "Active" : "Inactive"}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* Matchups Tab */}
