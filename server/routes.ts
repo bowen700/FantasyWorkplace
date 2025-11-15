@@ -281,12 +281,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      // Check if error is due to foreign key constraint
-      if (error instanceof Error && error.message.includes('foreign key')) {
-        return res.status(400).json({ 
-          message: "Cannot delete user with existing data. Please remove user's matchups and KPI data first." 
-        });
-      }
       res.status(500).json({ message: "Failed to delete user" });
     }
   });

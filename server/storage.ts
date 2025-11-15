@@ -26,7 +26,7 @@ import {
   type InsertAiCoachConversation,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (IMPORTANT: mandatory for Replit Auth)
@@ -108,7 +108,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
+    // Cascade delete all related data in a transaction for atomicity
+    await db.transaction(async (tx) => {
+      // Delete KPI data
+      await tx.delete(kpiData).where(eq(kpiData.userId, id));
+      
+      // Delete user badges
+      await tx.delete(userBadges).where(eq(userBadges.userId, id));
+      
+      // Delete AI coach conversations
+      await tx.delete(aiCoachConversations).where(eq(aiCoachConversations.userId, id));
+      
+      // Delete matchups where user is player1, player2, or winner
+      await tx.delete(matchups).where(
+        or(
+          eq(matchups.player1Id, id),
+          eq(matchups.player2Id, id),
+          eq(matchups.winnerId, id)
+        )
+      );
+      
+      // Finally, delete the user
+      await tx.delete(users).where(eq(users.id, id));
+    });
   }
 
   // Season operations

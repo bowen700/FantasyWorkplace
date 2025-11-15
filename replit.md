@@ -163,7 +163,7 @@ All users have been assigned sales rep numbers:
 
 ## Recent Changes
 
-### November 15, 2025 - Admin Access Security Enhancement
+### November 15, 2025 - Admin Access Security & Cascade Delete
 - **Admin Access Model Change**: Changed from role-based to password-based admin access
   - Any authenticated user can access admin functions after entering admin password (accessgranted!)
   - Admin password prompt shown when clicking Admin in sidebar
@@ -177,6 +177,12 @@ All users have been assigned sales rep numbers:
 - **Admin Routes Updated**:
   - All admin CRUD routes now use `requireAuth, requireAdminPassword` middleware chain
   - Provides server-side verification to prevent API bypass
+- **Cascade Delete Implementation**:
+  - Updated `deleteUser` to cascade delete all related data in a database transaction
+  - Deletes: KPI data, user badges, AI coach conversations, matchups (where user is player1, player2, or winner)
+  - Transaction ensures atomicity - all deletes succeed or all rollback
+  - Enhanced delete confirmation dialog to explicitly list all data that will be deleted
+  - Delete button styled with destructive colors and updated text to "Delete User and All Data"
 
 ### November 12, 2025 - Admin User Management System
 - **User Management Storage & API**: 

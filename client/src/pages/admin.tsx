@@ -740,10 +740,24 @@ export default function Admin() {
           <AlertDialog open={deleteUserOpen} onOpenChange={setDeleteUserOpen}>
             <AlertDialogContent data-testid="dialog-delete-user">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete User?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete {selectedUser?.firstName} {selectedUser?.lastName}? 
-                  This action cannot be undone. The user will need to sign in again to rejoin.
+                <AlertDialogTitle>Delete User and All Associated Data?</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p>
+                    Are you sure you want to permanently delete {selectedUser?.firstName} {selectedUser?.lastName}?
+                  </p>
+                  <p className="font-semibold">
+                    This will delete:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>User profile</li>
+                    <li>All KPI data submissions</li>
+                    <li>All matchup records</li>
+                    <li>All earned badges</li>
+                    <li>AI coach conversation history</li>
+                  </ul>
+                  <p className="font-semibold text-destructive">
+                    This action cannot be undone.
+                  </p>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -754,9 +768,10 @@ export default function Admin() {
                       deleteUserMutation.mutate(selectedUser.id);
                     }
                   }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   data-testid="button-confirm-delete"
                 >
-                  Delete
+                  Delete User and All Data
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
