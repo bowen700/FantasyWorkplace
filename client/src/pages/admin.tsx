@@ -164,6 +164,7 @@ export default function Admin() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Matchups generated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
     },
     onError: (error: Error) => {
@@ -177,6 +178,7 @@ export default function Admin() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Matchup updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
       setEditMatchupOpen(false);
     },
