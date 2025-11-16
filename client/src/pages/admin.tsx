@@ -813,13 +813,13 @@ export default function Admin() {
                     onValueChange={(value) => setTempActiveUserSpots(value[0])}
                     min={4}
                     max={14}
-                    step={1}
+                    step={2}
                     className="flex-1"
                     data-testid="slider-active-spots"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  This controls how many users can be assigned active user numbers. Users beyond this limit will be placed on the waitlist.
+                  This controls how many users can be assigned active user numbers. Users beyond this limit will be placed on the waitlist. Must be an even number for matchup pairing.
                 </p>
                 {tempActiveUserSpots !== activeUserSpots && (
                   <Button
