@@ -57,6 +57,7 @@ export default function Admin() {
   const [tempRegularSeasonWeeks, setTempRegularSeasonWeeks] = useState<number>(9);
   const [editingSeasonName, setEditingSeasonName] = useState<boolean>(false);
   const [tempSeasonName, setTempSeasonName] = useState<string>("");
+  const [newSeasonRegularWeeks, setNewSeasonRegularWeeks] = useState<string>("9");
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -419,14 +420,19 @@ export default function Admin() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="regularSeasonWeeks">Regular Season Weeks</Label>
-                    <Input
-                      id="regularSeasonWeeks"
-                      name="regularSeasonWeeks"
-                      type="number"
-                      defaultValue="10"
-                      required
-                      data-testid="input-regular-weeks"
-                    />
+                    <Select value={newSeasonRegularWeeks} onValueChange={setNewSeasonRegularWeeks}>
+                      <SelectTrigger id="regularSeasonWeeks" data-testid="select-regular-weeks-create">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 8 }, (_, i) => i + 6).map((weeks) => (
+                          <SelectItem key={weeks} value={weeks.toString()}>
+                            {weeks} weeks
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input type="hidden" name="regularSeasonWeeks" value={newSeasonRegularWeeks} />
                   </div>
                   <div>
                     <Label htmlFor="playoffWeeks">Playoff Weeks</Label>
