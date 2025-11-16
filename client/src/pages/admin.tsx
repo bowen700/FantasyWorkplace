@@ -55,6 +55,8 @@ export default function Admin() {
   const [tempActiveUserSpots, setTempActiveUserSpots] = useState<number>(8);
   const [seasonShuffleModified, setSeasonShuffleModified] = useState<boolean>(false);
   const [tempRegularSeasonWeeks, setTempRegularSeasonWeeks] = useState<number>(9);
+  const [editingSeasonName, setEditingSeasonName] = useState<boolean>(false);
+  const [tempSeasonName, setTempSeasonName] = useState<string>("");
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -319,6 +321,9 @@ export default function Admin() {
     if (season?.regularSeasonWeeks) {
       setTempRegularSeasonWeeks(season.regularSeasonWeeks);
     }
+    if (season?.name) {
+      setTempSeasonName(season.name);
+    }
   }, [season]);
 
   // Show password prompt if access not granted
@@ -446,7 +451,57 @@ export default function Admin() {
         {season && (
           <Card>
             <CardHeader>
-              <CardTitle>{season.name}</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                {editingSeasonName ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      value={tempSeasonName}
+                      onChange={(e) => setTempSeasonName(e.target.value)}
+                      className="flex-1"
+                      data-testid="input-season-name"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (!season || !tempSeasonName.trim()) return;
+                        updateSeasonMutation.mutate({ 
+                          id: season.id, 
+                          data: { name: tempSeasonName.trim() } 
+                        });
+                        setEditingSeasonName(false);
+                      }}
+                      disabled={updateSeasonMutation.isPending || !tempSeasonName.trim()}
+                      data-testid="button-save-season-name"
+                    >
+                      {updateSeasonMutation.isPending ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setTempSeasonName(season.name);
+                        setEditingSeasonName(false);
+                      }}
+                      data-testid="button-cancel-season-name"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <CardTitle>{season.name}</CardTitle>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setEditingSeasonName(true)}
+                      data-testid="button-edit-season-name"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
               <CardDescription>
                 {new Date(season.startDate).toLocaleDateString()} -{" "}
                 {new Date(season.endDate).toLocaleDateString()}
