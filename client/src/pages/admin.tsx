@@ -16,8 +16,23 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users } from "lucide-react";
+import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight } from "lucide-react";
 import type { Kpi, Season, InsertKpi, InsertSeason, User } from "@shared/schema";
+
+interface MatchupWithPlayers {
+  id: string;
+  seasonId: string;
+  week: number;
+  player1Id: string;
+  player2Id: string;
+  player1Score: number | null;
+  player2Score: number | null;
+  winnerId: string | null;
+  isPlayoff: boolean;
+  player1?: User;
+  player2?: User;
+  winner?: User;
+}
 
 export default function Admin() {
   const { toast } = useToast();
@@ -32,6 +47,10 @@ export default function Admin() {
   const [adminPassword, setAdminPassword] = useState<string>("");
   const [adminPasswordError, setAdminPasswordError] = useState<string>("");
   const [currentWeekSlider, setCurrentWeekSlider] = useState<number>(1);
+  const [editMatchupOpen, setEditMatchupOpen] = useState(false);
+  const [selectedMatchup, setSelectedMatchup] = useState<MatchupWithPlayers | null>(null);
+  const [newPlayer1Id, setNewPlayer1Id] = useState<string>("");
+  const [newPlayer2Id, setNewPlayer2Id] = useState<string>("");
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -49,6 +68,11 @@ export default function Admin() {
 
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    enabled: adminAccess?.hasAccess === true,
+  });
+
+  const { data: allMatchups } = useQuery<MatchupWithPlayers[]>({
+    queryKey: ["/api/matchups/all"],
     enabled: adminAccess?.hasAccess === true,
   });
 
@@ -141,6 +165,20 @@ export default function Admin() {
     onSuccess: () => {
       toast({ title: "Success", description: "Matchups generated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateMatchupMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { player1Id: string; player2Id: string } }) => {
+      return await apiRequest("PATCH", `/api/matchups/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Matchup updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
+      setEditMatchupOpen(false);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -501,32 +539,205 @@ export default function Admin() {
 
         {/* Matchups Tab */}
         <TabsContent value="matchups" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="font-display text-2xl font-bold">Matchup Generation</h2>
-            <Button
-              onClick={() => season && generateMatchupsMutation.mutate(season.currentWeek)}
-              disabled={!season || generateMatchupsMutation.isPending}
-              data-testid="button-generate-matchups"
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {generateMatchupsMutation.isPending ? "Generating..." : "Generate Matchups"}
-            </Button>
+          <div>
+            <h2 className="font-display text-2xl font-bold">Matchup Management</h2>
+            <p className="text-muted-foreground">View and edit matchups for all weeks</p>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Automatic Matchup Scheduler</CardTitle>
-              <CardDescription>
-                Generate random pairings for the current week
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Click the button above to automatically create matchups for Week {season?.currentWeek || 1}.
-                The system will pair participants randomly and ensure fair competition.
-              </p>
-            </CardContent>
-          </Card>
+          {/* Group matchups by week */}
+          {season && Array.from({ length: season.regularSeasonWeeks + season.playoffWeeks }, (_, i) => i + 1).map((week) => {
+            const weekMatchups = allMatchups?.filter(m => m.week === week) || [];
+            const isPlayoffWeek = week > season.regularSeasonWeeks;
+            
+            return (
+              <Card key={week}>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>
+                        Week {week} {isPlayoffWeek && "(Playoff)"}
+                      </CardTitle>
+                      <CardDescription>
+                        {weekMatchups.length > 0 
+                          ? `${weekMatchups.length} matchup${weekMatchups.length !== 1 ? 's' : ''} scheduled`
+                          : "No matchups generated yet"}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => generateMatchupsMutation.mutate(week)}
+                      disabled={generateMatchupsMutation.isPending}
+                      data-testid={`button-regenerate-week-${week}`}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Regenerate
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {weekMatchups.length > 0 ? (
+                    <div className="space-y-3">
+                      {weekMatchups.map((matchup) => (
+                        <div 
+                          key={matchup.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                          data-testid={`matchup-${matchup.id}`}
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            {/* Player 1 */}
+                            <div className="flex items-center gap-2 flex-1">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {matchup.player1?.firstName?.charAt(0)}{matchup.player1?.lastName?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">
+                                  {matchup.player1?.firstName} {matchup.player1?.lastName}
+                                </div>
+                                {matchup.player1Score !== null && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {matchup.player1Score.toFixed(1)} pts
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* VS */}
+                            <div className="text-sm font-semibold text-muted-foreground px-4">
+                              VS
+                            </div>
+
+                            {/* Player 2 */}
+                            <div className="flex items-center gap-2 flex-1 justify-end">
+                              <div className="text-right">
+                                <div className="font-medium">
+                                  {matchup.player2?.firstName} {matchup.player2?.lastName}
+                                </div>
+                                {matchup.player2Score !== null && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {matchup.player2Score.toFixed(1)} pts
+                                  </div>
+                                )}
+                              </div>
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {matchup.player2?.firstName?.charAt(0)}{matchup.player2?.lastName?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          </div>
+
+                          {/* Edit Button */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedMatchup(matchup);
+                              setNewPlayer1Id(matchup.player1Id);
+                              setNewPlayer2Id(matchup.player2Id);
+                              setEditMatchupOpen(true);
+                            }}
+                            data-testid={`button-edit-matchup-${matchup.id}`}
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No matchups for this week</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => generateMatchupsMutation.mutate(week)}
+                        disabled={generateMatchupsMutation.isPending}
+                        data-testid={`button-generate-week-${week}`}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Generate Matchups
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {/* Edit Matchup Dialog */}
+          <Dialog open={editMatchupOpen} onOpenChange={setEditMatchupOpen}>
+            <DialogContent data-testid="dialog-edit-matchup">
+              <DialogHeader>
+                <DialogTitle>Edit Matchup</DialogTitle>
+                <DialogDescription>
+                  Change the participants in this matchup
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-player1">Player 1</Label>
+                  <Select value={newPlayer1Id} onValueChange={setNewPlayer1Id}>
+                    <SelectTrigger id="edit-player1" data-testid="select-edit-player1">
+                      <SelectValue placeholder="Select player 1" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users?.filter(u => u.salesRepNumber !== null).map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-player2">Player 2</Label>
+                  <Select value={newPlayer2Id} onValueChange={setNewPlayer2Id}>
+                    <SelectTrigger id="edit-player2" data-testid="select-edit-player2">
+                      <SelectValue placeholder="Select player 2" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users?.filter(u => u.salesRepNumber !== null).map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditMatchupOpen(false)} data-testid="button-cancel-edit-matchup">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!selectedMatchup || !newPlayer1Id || !newPlayer2Id) return;
+                    if (newPlayer1Id === newPlayer2Id) {
+                      toast({
+                        title: "Error",
+                        description: "Players must be different",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    updateMatchupMutation.mutate({
+                      id: selectedMatchup.id,
+                      data: { player1Id: newPlayer1Id, player2Id: newPlayer2Id },
+                    });
+                  }}
+                  disabled={updateMatchupMutation.isPending}
+                  data-testid="button-save-matchup"
+                >
+                  {updateMatchupMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Users Tab */}

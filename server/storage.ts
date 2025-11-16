@@ -55,6 +55,7 @@ export interface IStorage {
   // Matchup operations
   getMatchupsByWeek(seasonId: string, week: number): Promise<Matchup[]>;
   getRecentMatchupsByUser(userId: string, seasonId: string, limit: number): Promise<Matchup[]>;
+  getMatchupById(id: string): Promise<Matchup | undefined>;
   createMatchup(matchup: InsertMatchup): Promise<Matchup>;
   updateMatchup(id: string, data: Partial<Matchup>): Promise<Matchup>;
   bulkCreateMatchups(matchups: InsertMatchup[]): Promise<Matchup[]>;
@@ -222,6 +223,15 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(matchups)
       .where(and(eq(matchups.seasonId, seasonId), eq(matchups.week, week)));
+  }
+
+  async getMatchupById(id: string): Promise<Matchup | undefined> {
+    const [matchup] = await db
+      .select()
+      .from(matchups)
+      .where(eq(matchups.id, id))
+      .limit(1);
+    return matchup;
   }
 
   async getRecentMatchupsByUser(userId: string, seasonId: string, limit: number): Promise<Matchup[]> {

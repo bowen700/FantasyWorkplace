@@ -685,6 +685,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/matchups/:id', requireAuth, requireAdminPassword, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = z.object({
+        player1Id: z.string(),
+        player2Id: z.string(),
+      });
+      const { player1Id, player2Id } = updateSchema.parse(req.body);
+
+      // Validate that players are different
+      if (player1Id === player2Id) {
+        return res.status(400).json({ message: "Players must be different" });
+      }
+
+      // Get the matchup to update
+      const matchup = await storage.getMatchupById(id);
+      if (!matchup) {
+        return res.status(404).json({ message: "Matchup not found" });
+      }
+
+      // Update the matchup with new players
+      await storage.updateMatchup(id, {
+        player1Id,
+        player2Id,
+      });
+
+      // Recalculate scores for this matchup's week
+      const season = await storage.getActiveSeason();
+      if (season) {
+        await calculateMatchupScores(season.id, matchup.week);
+      }
+
+      const updatedMatchup = await storage.getMatchupById(id);
+      res.json(updatedMatchup);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error updating matchup:", error);
+      res.status(500).json({ message: "Failed to update matchup" });
+    }
+  });
+
   // ============= Leaderboard Route =============
   app.get('/api/leaderboard', requireAuth, async (req, res) => {
     try {
