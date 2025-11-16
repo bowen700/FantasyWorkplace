@@ -95,7 +95,13 @@ export default function Matchups() {
     let totalScore = 0;
     let matchCount = 0;
 
+    // Only count matchups from previous weeks (exclude current week)
+    const currentWeek = season?.currentWeek || 0;
+    
     allMatchups.forEach((m) => {
+      // Skip matchups from the current week
+      if (m.week >= currentWeek) return;
+      
       const isP1 = m.player1Id === userId;
       const isP2 = m.player2Id === userId;
 

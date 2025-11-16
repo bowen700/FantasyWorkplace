@@ -668,13 +668,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allUsers.map(async (user) => {
           const userMatchups = await storage.getRecentMatchupsByUser(user.id, season.id, 100);
           
-          const wins = userMatchups.filter(m => m.winnerId === user.id).length;
-          const losses = userMatchups.filter(
+          // Only count matchups from previous weeks (exclude current week)
+          const previousWeeksMatchups = userMatchups.filter(m => m.week < season.currentWeek);
+          
+          const wins = previousWeeksMatchups.filter(m => m.winnerId === user.id).length;
+          const losses = previousWeeksMatchups.filter(
             m => m.winnerId && m.winnerId !== user.id && 
             (m.player1Id === user.id || m.player2Id === user.id)
           ).length;
           
-          const totalPoints = userMatchups.reduce((sum, m) => {
+          const totalPoints = previousWeeksMatchups.reduce((sum, m) => {
             if (m.player1Id === user.id) return sum + (m.player1Score || 0);
             if (m.player2Id === user.id) return sum + (m.player2Score || 0);
             return sum;
