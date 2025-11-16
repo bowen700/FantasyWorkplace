@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,7 @@ export default function Matchups() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [kpiInputs, setKpiInputs] = useState<KpiInput[]>([]);
+  const lastPopulatedRef = useRef<{ userId: string; week: number } | null>(null);
 
   const { data: season } = useQuery<Season>({
     queryKey: ["/api/seasons/active"],
@@ -168,6 +169,7 @@ export default function Matchups() {
         description: "KPI data uploaded successfully",
       });
       setKpiInputs([]);
+      lastPopulatedRef.current = null; // Reset to allow re-population with fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/kpi-data"] });
       queryClient.invalidateQueries({ queryKey: ["/api/kpi-data/weekly", weekKey] });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups", weekKey] });
@@ -197,11 +199,18 @@ export default function Matchups() {
 
   // Pre-populate all 4 KPIs when viewing current week
   useEffect(() => {
-    if (!season || !kpis || !user) return;
+    if (!season || !kpis || !user || kpiDataLoading) return;
     
     const isCurrentWeek = parseInt(selectedWeek || "0") === season.currentWeek;
+    const currentWeekNum = parseInt(selectedWeek || "0");
     
-    if (isCurrentWeek && kpis.length > 0 && kpiInputs.length === 0) {
+    // Only re-populate if user or week has changed
+    const shouldRepopulate = 
+      !lastPopulatedRef.current || 
+      lastPopulatedRef.current.userId !== user.id ||
+      lastPopulatedRef.current.week !== currentWeekNum;
+    
+    if (isCurrentWeek && kpis.length > 0 && shouldRepopulate) {
       const activeKpis = kpis.filter(k => k.isActive);
       const prepopulatedInputs = activeKpis.map(kpi => {
         const existingData = kpiData?.find(d => d.kpiId === kpi.id && d.userId === user.id);
@@ -211,10 +220,12 @@ export default function Matchups() {
         };
       });
       setKpiInputs(prepopulatedInputs);
+      lastPopulatedRef.current = { userId: user.id, week: currentWeekNum };
     } else if (!isCurrentWeek && kpiInputs.length > 0) {
       setKpiInputs([]);
+      lastPopulatedRef.current = null;
     }
-  }, [selectedWeek, season, kpis, kpiData, user, kpiInputs.length]);
+  }, [selectedWeek, season, kpis, kpiData, kpiDataLoading, user?.id]);
 
   const handleSubmit = () => {
     if (!season || !user) return;
