@@ -182,29 +182,29 @@ export default function Landing() {
       <Dialog open={showUserSelection} onOpenChange={setShowUserSelection}>
         <DialogContent className="max-w-2xl" data-testid="dialog-user-selection">
           <DialogHeader>
-            <DialogTitle>Select Your Profile</DialogTitle>
+            <DialogTitle>Select Profile</DialogTitle>
             <DialogDescription>
-              Choose which user profile you want to access
+              Choose which user profile you want to switch to
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-            {users?.filter(u => u.salesRepNumber !== null).sort((a, b) => (a.salesRepNumber || 0) - (b.salesRepNumber || 0)).map((user) => (
+            {users?.filter(u => u.salesRepNumber !== null).sort((a, b) => (a.salesRepNumber || 0) - (b.salesRepNumber || 0)).map((u) => (
               <Card
-                key={user.id}
+                key={u.id}
                 className="cursor-pointer hover-elevate active-elevate-2"
-                onClick={() => handleUserSelect(user.id)}
-                data-testid={`card-user-${user.id}`}
+                onClick={() => handleUserSelect(u.id)}
+                data-testid={`card-user-${u.id}`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={user.profileImageUrl || undefined} />
+                      <AvatarImage src={u.profileImageUrl || undefined} />
                       <AvatarFallback>
-                        {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                        {u.firstName?.charAt(0)}{u.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <CardTitle className="text-base">
-                      {user.firstName} {user.lastName}
+                      {u.firstName} {u.lastName}
                     </CardTitle>
                   </div>
                 </CardHeader>
@@ -218,6 +218,7 @@ export default function Landing() {
                 setShowUserSelection(false);
                 setPassword("");
               }}
+              data-testid="button-cancel-user-selection"
             >
               Cancel
             </Button>
