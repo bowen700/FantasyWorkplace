@@ -1180,6 +1180,24 @@ async function generatePlayoffBracket(seasonId: string, week: number) {
   return matchups;
 }
 
+// Helper function to safely evaluate a formula
+function evaluateFormula(formula: string, value: number): number {
+  try {
+    // Replace 'value' in the formula with the actual value
+    // Support basic math operations: +, -, *, /, parentheses
+    const sanitizedFormula = formula
+      .replace(/value/g, value.toString())
+      .replace(/[^0-9+\-*/().]/g, ''); // Remove any non-math characters
+    
+    // Use Function constructor for safe evaluation (restricted to math)
+    const result = new Function(`return ${sanitizedFormula}`)();
+    return typeof result === 'number' && !isNaN(result) ? result : 0;
+  } catch (error) {
+    console.error(`Error evaluating formula "${formula}" with value ${value}:`, error);
+    return 0;
+  }
+}
+
 // Helper function to calculate matchup scores using point-based system
 async function calculateMatchupScores(seasonId: string, week: number) {
   const matchups = await storage.getMatchupsByWeek(seasonId, week);
@@ -1188,8 +1206,8 @@ async function calculateMatchupScores(seasonId: string, week: number) {
   
   if (matchups.length === 0) return;
   
-  // Point conversion factors for each KPI
-  const kpiConversionFactors: Record<string, number> = {
+  // Default conversion factors for KPIs without formulas
+  const defaultConversionFactors: Record<string, number> = {
     "Sales Gross Profit": 300,    // 300 GP = 1 point
     "Sales Revenue": 3000,         // 3000 revenue = 1 point
     "Leads Talked To": 3,          // 3 leads = 1 point
@@ -1207,18 +1225,29 @@ async function calculateMatchupScores(seasonId: string, week: number) {
     let player2Score = 0;
     
     for (const kpi of activeKpis) {
-      const conversionFactor = kpiConversionFactors[kpi.name];
-      if (!conversionFactor) continue; // Skip KPIs without conversion factor
-      
       const p1Data = player1Data.find(d => d.kpiId === kpi.id);
       const p2Data = player2Data.find(d => d.kpiId === kpi.id);
       
-      // Convert KPI value to points
-      if (p1Data) {
-        player1Score += p1Data.value / conversionFactor;
-      }
-      if (p2Data) {
-        player2Score += p2Data.value / conversionFactor;
+      // Use conversion formula if available, otherwise fall back to default factors
+      if (kpi.conversionFormula) {
+        // Use the custom formula
+        if (p1Data) {
+          player1Score += evaluateFormula(kpi.conversionFormula, p1Data.value);
+        }
+        if (p2Data) {
+          player2Score += evaluateFormula(kpi.conversionFormula, p2Data.value);
+        }
+      } else {
+        // Fall back to default conversion factors
+        const conversionFactor = defaultConversionFactors[kpi.name];
+        if (!conversionFactor) continue; // Skip KPIs without conversion factor
+        
+        if (p1Data) {
+          player1Score += p1Data.value / conversionFactor;
+        }
+        if (p2Data) {
+          player2Score += p2Data.value / conversionFactor;
+        }
       }
     }
     

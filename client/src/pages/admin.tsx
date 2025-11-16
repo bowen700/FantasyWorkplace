@@ -665,19 +665,30 @@ export default function Admin() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`weight-${kpi.id}`}>Weight: {kpi.weight.toFixed(1)}</Label>
-                    <Slider
-                      id={`weight-${kpi.id}`}
-                      min={0}
-                      max={10}
-                      step={0.1}
-                      value={[kpi.weight]}
-                      onValueChange={([value]) =>
-                        updateKpiMutation.mutate({ id: kpi.id, data: { weight: value } })
-                      }
+                    <Label htmlFor={`formula-${kpi.id}`}>
+                      Conversion Formula
+                      <span className="text-xs text-muted-foreground ml-2">(use "value" in formula, e.g., "value / 300")</span>
+                    </Label>
+                    <Input
+                      id={`formula-${kpi.id}`}
+                      placeholder="e.g., value / 300 or value * 2 + 10"
+                      defaultValue={kpi.conversionFormula || ''}
+                      onBlur={(e) => {
+                        const newFormula = e.target.value.trim();
+                        if (newFormula !== (kpi.conversionFormula || '')) {
+                          updateKpiMutation.mutate({ 
+                            id: kpi.id, 
+                            data: { conversionFormula: newFormula || null } 
+                          });
+                        }
+                      }}
                       className="mt-2"
-                      data-testid={`slider-weight-${kpi.id}`}
+                      data-testid={`input-formula-${kpi.id}`}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter a formula to convert raw KPI values to points. Use "value" to reference the KPI value.
+                      Examples: "value / 300" (300 units = 1 point), "value * 0.5" (multiply by 0.5)
+                    </p>
                   </div>
                 </CardContent>
               </Card>

@@ -77,6 +77,7 @@ export const kpis = pgTable("kpis", {
   description: text("description"),
   unit: varchar("unit", { length: 50 }), // e.g., "calls", "sales", "%", "hours"
   weight: real("weight").notNull().default(1.0), // weight in score calculation (0-100)
+  conversionFormula: text("conversion_formula"), // formula to convert raw value to points (e.g., "value / 300")
   isActive: boolean("is_active").notNull().default(true),
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
