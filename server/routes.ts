@@ -274,6 +274,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User can update their own profile
+  app.patch('/api/users/:id/profile', requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Users can only update their own profile
+      if (id !== req.authUserId) {
+        return res.status(403).json({ message: "You can only update your own profile" });
+      }
+      
+      const profileUpdateSchema = z.object({
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().min(1).optional(),
+        profileImageUrl: z.string().optional(),
+      });
+      
+      const validatedData = profileUpdateSchema.parse(req.body);
+      
+      const updatedUser = await storage.updateUser(id, validatedData);
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   app.patch('/api/users/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;

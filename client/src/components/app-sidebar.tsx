@@ -42,8 +42,8 @@ export function AppSidebar() {
       primary: true,
     },
     {
-      title: "Badges",
-      url: "/badges",
+      title: "Profile",
+      url: "/profile",
       icon: Award,
       visible: true,
       primary: false,

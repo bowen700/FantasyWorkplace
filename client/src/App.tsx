@@ -11,7 +11,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Matchups from "@/pages/matchups";
 import League from "@/pages/league";
-import Badges from "@/pages/badges";
+import Profile from "@/pages/profile";
 import Admin from "@/pages/admin";
 
 function Router() {
@@ -31,7 +31,7 @@ function Router() {
       <Route path="/" component={Matchups} />
       <Route path="/matchups" component={Matchups} />
       <Route path="/league" component={League} />
-      <Route path="/badges" component={Badges} />
+      <Route path="/profile" component={Profile} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
