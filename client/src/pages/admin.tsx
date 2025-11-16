@@ -54,6 +54,7 @@ export default function Admin() {
   const [activeUserSpots, setActiveUserSpots] = useState<number>(8);
   const [tempActiveUserSpots, setTempActiveUserSpots] = useState<number>(8);
   const [seasonShuffleModified, setSeasonShuffleModified] = useState<boolean>(false);
+  const [tempRegularSeasonWeeks, setTempRegularSeasonWeeks] = useState<number>(9);
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -315,6 +316,9 @@ export default function Admin() {
       setActiveUserSpots(season.activeUserSpots);
       setTempActiveUserSpots(season.activeUserSpots);
     }
+    if (season?.regularSeasonWeeks) {
+      setTempRegularSeasonWeeks(season.regularSeasonWeeks);
+    }
   }, [season]);
 
   // Show password prompt if access not granted
@@ -454,9 +458,36 @@ export default function Admin() {
                   <span className="text-muted-foreground">Current Week:</span>{" "}
                   <span className="font-semibold">{season.currentWeek}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Regular Season:</span>{" "}
-                  <span className="font-semibold">{season.regularSeasonWeeks} weeks</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Regular Season:</span>
+                  <Select 
+                    value={tempRegularSeasonWeeks.toString()} 
+                    onValueChange={(value) => setTempRegularSeasonWeeks(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[100px]" data-testid="select-regular-weeks">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 8 }, (_, i) => i + 6).map((weeks) => (
+                        <SelectItem key={weeks} value={weeks.toString()}>
+                          {weeks} weeks
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {tempRegularSeasonWeeks !== season.regularSeasonWeeks && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (!season) return;
+                        updateSeasonMutation.mutate({ id: season.id, data: { regularSeasonWeeks: tempRegularSeasonWeeks } });
+                      }}
+                      disabled={updateSeasonMutation.isPending}
+                      data-testid="button-save-regular-weeks"
+                    >
+                      {updateSeasonMutation.isPending ? "Saving..." : "Save"}
+                    </Button>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Playoffs:</span>{" "}
