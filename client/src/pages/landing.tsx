@@ -24,9 +24,10 @@ export default function Landing() {
   });
   const { toast } = useToast();
 
-  const { data: users } = useQuery<User[]>({
+  const { data: users, refetch: refetchUsers } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    enabled: showUserSelection,
+    enabled: showUserSelection || showCreateProfile,
+    retry: 2,
   });
 
   const selectUserMutation = useMutation({
@@ -81,6 +82,8 @@ export default function Landing() {
         setShowPasswordDialog(false);
         setShowUserSelection(true);
         setPasswordError("");
+        // Refetch users to ensure fresh data with verified session
+        setTimeout(() => refetchUsers(), 100);
       }
     } catch (error: any) {
       setPasswordError(error.message || "Incorrect password. Please try again.");
@@ -229,28 +232,34 @@ export default function Landing() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-            {users?.filter(u => u.salesRepNumber !== null).sort((a, b) => (a.salesRepNumber || 0) - (b.salesRepNumber || 0)).map((u) => (
-              <Card
-                key={u.id}
-                className="cursor-pointer hover-elevate active-elevate-2"
-                onClick={() => handleUserSelect(u.id)}
-                data-testid={`card-user-${u.id}`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={u.profileImageUrl || undefined} />
-                      <AvatarFallback>
-                        {u.firstName?.charAt(0)}{u.lastName?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <CardTitle className="text-base">
-                      {u.firstName} {u.lastName}
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))}
+            {users && users.filter(u => u.salesRepNumber !== null).length > 0 ? (
+              users.filter(u => u.salesRepNumber !== null).sort((a, b) => (a.salesRepNumber || 0) - (b.salesRepNumber || 0)).map((u) => (
+                <Card
+                  key={u.id}
+                  className="cursor-pointer hover-elevate active-elevate-2"
+                  onClick={() => handleUserSelect(u.id)}
+                  data-testid={`card-user-${u.id}`}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={u.profileImageUrl || undefined} />
+                        <AvatarFallback>
+                          {u.firstName?.charAt(0)}{u.lastName?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <CardTitle className="text-base">
+                        {u.firstName} {u.lastName}
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                {users === undefined ? "Loading profiles..." : "No profiles available. Click 'Add Profile' to create one."}
+              </div>
+            )}
           </div>
           <DialogFooter className="flex justify-between gap-2">
             <Button 
