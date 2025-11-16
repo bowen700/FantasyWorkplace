@@ -693,6 +693,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/matchups/shuffle', requireAuth, requireAdminPassword, async (req, res) => {
+    try {
+      const bodySchema = z.object({ 
+        week: z.number()
+      });
+      const { week } = bodySchema.parse(req.body);
+      const season = await storage.getActiveSeason();
+      if (!season) {
+        return res.status(404).json({ message: "No active season" });
+      }
+      
+      // Get existing matchups for this week
+      const existingMatchups = await storage.getMatchupsByWeek(season.id, week);
+      if (existingMatchups.length === 0) {
+        return res.status(400).json({ message: "No matchups exist for this week to shuffle" });
+      }
+      
+      // Extract all player IDs from the matchups
+      const playerIds: string[] = [];
+      existingMatchups.forEach(m => {
+        playerIds.push(m.player1Id, m.player2Id);
+      });
+      
+      // Remove duplicates and shuffle the array
+      const uniquePlayers = Array.from(new Set(playerIds));
+      const shuffled = [...uniquePlayers].sort(() => Math.random() - 0.5);
+      
+      // Update each matchup with new pairings
+      for (let i = 0; i < existingMatchups.length; i++) {
+        const player1Index = i * 2;
+        const player2Index = i * 2 + 1;
+        
+        if (player1Index < shuffled.length && player2Index < shuffled.length) {
+          await storage.updateMatchup(existingMatchups[i].id, {
+            player1Id: shuffled[player1Index],
+            player2Id: shuffled[player2Index],
+          });
+        }
+      }
+      
+      // Recalculate scores after shuffling
+      await calculateMatchupScores(season.id, week);
+      
+      // Fetch updated matchups to return
+      const updatedMatchups = await storage.getMatchupsByWeek(season.id, week);
+      res.json(updatedMatchups);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error shuffling matchups:", error);
+      res.status(500).json({ message: "Failed to shuffle matchups" });
+    }
+  });
+
   app.patch('/api/matchups/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;

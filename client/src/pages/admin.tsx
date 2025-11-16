@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight } from "lucide-react";
+import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle } from "lucide-react";
 import type { Kpi, Season, InsertKpi, InsertSeason, User } from "@shared/schema";
 
 interface MatchupWithPlayers {
@@ -166,6 +166,20 @@ export default function Admin() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Matchups generated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const shuffleMatchupsMutation = useMutation({
+    mutationFn: async (week: number) => {
+      return await apiRequest("POST", "/api/matchups/shuffle", { week });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Matchups shuffled successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
     },
@@ -589,16 +603,27 @@ export default function Admin() {
                           : "No matchups generated yet"}
                       </CardDescription>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => generateMatchupsMutation.mutate(week)}
-                      disabled={generateMatchupsMutation.isPending}
-                      data-testid={`button-regenerate-week-${week}`}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Regenerate
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => shuffleMatchupsMutation.mutate(week)}
+                        disabled={shuffleMatchupsMutation.isPending}
+                        data-testid={`button-shuffle-week-${week}`}
+                      >
+                        <Shuffle className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => generateMatchupsMutation.mutate(week)}
+                        disabled={generateMatchupsMutation.isPending}
+                        data-testid={`button-regenerate-week-${week}`}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Regenerate
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
