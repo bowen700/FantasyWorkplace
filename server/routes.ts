@@ -108,11 +108,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/select-user', async (req: any, res) => {
     try {
-      // Check if password was verified OR user is already authenticated
+      // Check if password was verified OR user is already authenticated (via session or Replit Auth)
       const isPasswordVerified = req.session.passwordVerified === true;
-      const isAlreadyAuthenticated = req.session.selectedUserId !== null && req.session.selectedUserId !== undefined;
+      const currentUserId = getCurrentUserId(req);
       
-      if (!isPasswordVerified && !isAlreadyAuthenticated) {
+      if (!isPasswordVerified && !currentUserId) {
         return res.status(401).json({ message: "Password verification required" });
       }
       
