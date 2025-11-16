@@ -51,6 +51,7 @@ export default function Admin() {
   const [selectedMatchup, setSelectedMatchup] = useState<MatchupWithPlayers | null>(null);
   const [newPlayer1Id, setNewPlayer1Id] = useState<string>("");
   const [newPlayer2Id, setNewPlayer2Id] = useState<string>("");
+  const [activeUserSpots, setActiveUserSpots] = useState<number>(8);
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -203,6 +204,19 @@ export default function Admin() {
     },
   });
 
+  const updateActiveSpotsMutation = useMutation({
+    mutationFn: async (spots: number) => {
+      if (!season) throw new Error("No active season");
+      return await apiRequest("PATCH", `/api/seasons/${season.id}`, { activeUserSpots: spots });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/seasons/active"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
       return await apiRequest("DELETE", `/api/users/${id}`, null);
@@ -260,6 +274,13 @@ export default function Admin() {
   useEffect(() => {
     if (season) {
       setCurrentWeekSlider(season.currentWeek);
+    }
+  }, [season]);
+
+  // Sync activeUserSpots with season data
+  useEffect(() => {
+    if (season?.activeUserSpots) {
+      setActiveUserSpots(season.activeUserSpots);
     }
   }, [season]);
 
@@ -749,6 +770,34 @@ export default function Admin() {
             <p className="text-muted-foreground">Manage league participants and waitlist</p>
           </div>
 
+          {/* Active User Spots Slider */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Number of Active User Spots</CardTitle>
+              <CardDescription>Adjust the number of users that can be actively matched up (4-14)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Label className="min-w-[100px]">{activeUserSpots} Spots</Label>
+                  <Slider
+                    value={[activeUserSpots]}
+                    onValueChange={(value) => setActiveUserSpots(value[0])}
+                    onValueCommit={(value) => updateActiveSpotsMutation.mutate(value[0])}
+                    min={4}
+                    max={14}
+                    step={1}
+                    className="flex-1"
+                    data-testid="slider-active-spots"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This controls how many users can be assigned active user numbers. Users beyond this limit will be placed on the waitlist.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Sales Rep Number Legend */}
           <Card>
             <CardHeader>
@@ -757,7 +806,7 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => {
+                {Array.from({ length: activeUserSpots }, (_, i) => i + 1).map((num) => {
                   const user = users?.find((u) => u.salesRepNumber === num);
                   return (
                     <Badge
@@ -912,7 +961,7 @@ export default function Admin() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Waitlist</SelectItem>
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => {
+                      {Array.from({ length: activeUserSpots }, (_, i) => i + 1).map((num) => {
                         const isTaken = users?.some((u) => u.salesRepNumber === num && u.id !== selectedUser?.id);
                         return (
                           <SelectItem key={num} value={num.toString()} disabled={isTaken}>

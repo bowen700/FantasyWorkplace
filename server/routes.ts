@@ -315,15 +315,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // If salesRepNumber is being updated, check for conflicts
+      // If salesRepNumber is being updated, check for conflicts and validate against activeUserSpots
       if (validatedData.salesRepNumber !== undefined && validatedData.salesRepNumber !== null) {
+        // Get the active season to check activeUserSpots
+        const activeSeason = await storage.getActiveSeason();
+        if (activeSeason && validatedData.salesRepNumber > activeSeason.activeUserSpots) {
+          return res.status(400).json({ 
+            message: `User number ${validatedData.salesRepNumber} exceeds the maximum of ${activeSeason.activeUserSpots} active spots` 
+          });
+        }
+        
         const allUsers = await storage.getAllUsers();
         const conflictingUser = allUsers.find(
           u => u.salesRepNumber === validatedData.salesRepNumber && u.id !== id
         );
         if (conflictingUser) {
           return res.status(409).json({ 
-            message: `Sales rep number ${validatedData.salesRepNumber} is already assigned to ${conflictingUser.firstName} ${conflictingUser.lastName}` 
+            message: `User number ${validatedData.salesRepNumber} is already assigned to ${conflictingUser.firstName} ${conflictingUser.lastName}` 
           });
         }
       }

@@ -45,7 +45,7 @@ export type User = typeof users.$inferSelect;
 // Schema for admin user updates - only allow updating role and salesRepNumber
 export const updateUserSchema = z.object({
   role: z.enum(['employee', 'admin', 'cio']).optional(),
-  salesRepNumber: z.number().int().min(1).max(10).nullable().optional(),
+  salesRepNumber: z.number().int().min(1).max(14).nullable().optional(),
 });
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 
@@ -58,6 +58,7 @@ export const seasons = pgTable("seasons", {
   regularSeasonWeeks: integer("regular_season_weeks").notNull().default(10),
   playoffWeeks: integer("playoff_weeks").notNull().default(4),
   currentWeek: integer("current_week").notNull().default(1),
+  activeUserSpots: integer("active_user_spots").notNull().default(8),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
