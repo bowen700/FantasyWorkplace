@@ -139,6 +139,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/auth/create-profile', async (req: any, res) => {
+    try {
+      // Validate input
+      const createProfileSchema = z.object({
+        firstName: z.string().min(1, "First name is required"),
+        lastName: z.string().min(1, "Last name is required"),
+        email: z.string().email("Valid email is required"),
+      });
+
+      const validatedData = createProfileSchema.parse(req.body);
+
+      // Check if email is already taken
+      const allUsers = await storage.getAllUsers();
+      const emailExists = allUsers.some(u => u.email?.toLowerCase() === validatedData.email.toLowerCase());
+      if (emailExists) {
+        return res.status(409).json({ message: "Email already in use" });
+      }
+
+      // Find next available sales rep number (1-10)
+      const takenNumbers = new Set(
+        allUsers.map(u => u.salesRepNumber).filter((n): n is number => n !== null)
+      );
+      
+      let salesRepNumber: number | null = null;
+      for (let i = 1; i <= 10; i++) {
+        if (!takenNumbers.has(i)) {
+          salesRepNumber = i;
+          break;
+        }
+      }
+
+      // Create the new user
+      const newUser = await storage.upsertUser({
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        email: validatedData.email,
+        role: 'employee',
+        salesRepNumber,
+      });
+
+      res.json({ success: true, user: newUser });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error creating profile:", error);
+      res.status(500).json({ message: "Failed to create profile" });
+    }
+  });
+
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       // Check if user is selected via session

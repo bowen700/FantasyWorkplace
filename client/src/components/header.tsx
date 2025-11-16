@@ -17,20 +17,56 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Users } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import type { User as UserType } from "@shared/schema";
 
 export function Header() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showUserSelection, setShowUserSelection] = useState(false);
+  const [showCreateProfile, setShowCreateProfile] = useState(false);
+  const [newProfile, setNewProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
 
   const { data: users } = useQuery<UserType[]>({
     queryKey: ['/api/users'],
+  });
+
+  const createProfileMutation = useMutation({
+    mutationFn: async (data: { firstName: string; lastName: string; email: string }) => {
+      return await apiRequest("POST", "/api/auth/create-profile", data);
+    },
+    onSuccess: (response: any) => {
+      toast({
+        title: "Success",
+        description: "Profile created successfully",
+      });
+      setShowCreateProfile(false);
+      setNewProfile({ firstName: "", lastName: "", email: "" });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      // Auto-select the newly created user
+      if (response.user?.id) {
+        handleUserSelect(response.user.id);
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const getInitials = () => {
@@ -117,10 +153,77 @@ export function Header() {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setShowUserSelection(false)}
+              onClick={() => {
+                setShowUserSelection(false);
+                setShowCreateProfile(true);
+              }}
               data-testid="button-add-profile"
             >
               Add Profile
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Profile Dialog */}
+      <Dialog open={showCreateProfile} onOpenChange={setShowCreateProfile}>
+        <DialogContent data-testid="dialog-create-profile">
+          <DialogHeader>
+            <DialogTitle>Create New Profile</DialogTitle>
+            <DialogDescription>
+              Enter the details for the new user profile
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                value={newProfile.firstName}
+                onChange={(e) => setNewProfile({ ...newProfile, firstName: e.target.value })}
+                placeholder="Enter first name"
+                data-testid="input-first-name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={newProfile.lastName}
+                onChange={(e) => setNewProfile({ ...newProfile, lastName: e.target.value })}
+                placeholder="Enter last name"
+                data-testid="input-last-name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newProfile.email}
+                onChange={(e) => setNewProfile({ ...newProfile, email: e.target.value })}
+                placeholder="Enter email address"
+                data-testid="input-email"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowCreateProfile(false);
+                setNewProfile({ firstName: "", lastName: "", email: "" });
+              }}
+              data-testid="button-cancel-create"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createProfileMutation.mutate(newProfile)}
+              disabled={!newProfile.firstName || !newProfile.lastName || !newProfile.email || createProfileMutation.isPending}
+              data-testid="button-submit-create"
+            >
+              {createProfileMutation.isPending ? "Creating..." : "Create Profile"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -104,9 +104,11 @@ Fantasy Workplace is a gamified performance management platform that transforms 
 ## Authentication Flow
 1. Landing page shown to unauthenticated users
 2. User enters team password ($@le$te@m2026)
-3. User selects their profile from available users
+3. User selects their profile from available users or creates a new profile
 4. Session managed via PostgreSQL-backed Express sessions
 5. Admin page requires separate admin password (accessgranted!) for access
+6. Profile switching available via header dropdown menu
+7. "Add Profile" button opens profile creation form with auto-assignment to available sales rep slots (1-10)
 
 ## Database Operations
 - **Push schema**: `npm run db:push`
@@ -162,6 +164,18 @@ All users have been assigned sales rep numbers:
 - All KPI data is loaded and ready for matchup generation and leaderboard calculations
 
 ## Recent Changes
+
+### November 16, 2025 - Profile Creation Feature
+- **Add Profile Functionality**:
+  - Added "Add Profile" button to both landing page and header profile selection dialogs
+  - Created profile creation form with firstName, lastName, email fields
+  - Backend endpoint `/api/auth/create-profile` validates input and auto-assigns sales rep numbers
+  - Automatic sales rep number assignment (1-10) for new profiles
+  - Email uniqueness validation with clear error messages
+  - Auto-selects newly created profile after successful creation
+  - Form validation with disabled submit until all required fields are filled
+  - Toast notifications for success/error feedback
+  - Profile creation available during initial login and when switching profiles
 
 ### November 15, 2025 - Admin Access Security & Cascade Delete
 - **Admin Access Model Change**: Changed from role-based to password-based admin access
