@@ -905,7 +905,7 @@ export default function Admin() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="edit-sales-rep">Sales Rep Number (1-10 or leave empty for waitlist)</Label>
+                  <Label htmlFor="edit-sales-rep">User Rep Number (or assign to waitlist)</Label>
                   <Select value={editSalesRepNumber || "none"} onValueChange={setEditSalesRepNumber}>
                     <SelectTrigger id="edit-sales-rep" data-testid="select-edit-sales-rep">
                       <SelectValue placeholder="Waitlist" />
