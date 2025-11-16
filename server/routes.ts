@@ -749,6 +749,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/matchups/shuffle-season', requireAuth, requireAdminPassword, async (req, res) => {
+    try {
+      const season = await storage.getActiveSeason();
+      if (!season) {
+        return res.status(404).json({ message: "No active season" });
+      }
+      
+      // Get all active users
+      const allUsers = await storage.getAllUsers();
+      const activeUsers = allUsers
+        .filter(u => u.role !== 'cio' && u.salesRepNumber !== null)
+        .sort((a, b) => (a.salesRepNumber || 999) - (b.salesRepNumber || 999));
+      
+      if (activeUsers.length < 2) {
+        return res.status(400).json({ message: "Need at least 2 active users for matchups" });
+      }
+      
+      // Track matchup counts between all player pairs
+      const matchupCounts = new Map<string, number>();
+      
+      const getMatchupKey = (p1: string, p2: string) => {
+        return [p1, p2].sort().join('-');
+      };
+      
+      // Shuffle season for regular season weeks only
+      for (let week = 1; week <= season.regularSeasonWeeks; week++) {
+        // Get existing matchups for this week
+        const existingMatchups = await storage.getMatchupsByWeek(season.id, week);
+        
+        // Find best pairings with minimal repeats
+        const availablePlayers = [...activeUsers];
+        const weekPairings: { player1: typeof activeUsers[0], player2: typeof activeUsers[0] }[] = [];
+        
+        // Try to create pairings with minimal repeat matchups
+        while (availablePlayers.length >= 2) {
+          let bestPair: { player1: typeof activeUsers[0], player2: typeof activeUsers[0], count: number } | null = null;
+          let bestIndices: { i: number, j: number } | null = null;
+          
+          // Find the pair with the fewest previous matchups
+          for (let i = 0; i < availablePlayers.length; i++) {
+            for (let j = i + 1; j < availablePlayers.length; j++) {
+              const key = getMatchupKey(availablePlayers[i].id, availablePlayers[j].id);
+              const count = matchupCounts.get(key) || 0;
+              
+              if (!bestPair || count < bestPair.count) {
+                bestPair = { player1: availablePlayers[i], player2: availablePlayers[j], count };
+                bestIndices = { i, j };
+              }
+            }
+          }
+          
+          if (bestPair && bestIndices) {
+            weekPairings.push({ player1: bestPair.player1, player2: bestPair.player2 });
+            
+            // Update matchup count
+            const key = getMatchupKey(bestPair.player1.id, bestPair.player2.id);
+            matchupCounts.set(key, (matchupCounts.get(key) || 0) + 1);
+            
+            // Remove paired players (remove higher index first to avoid index shifting)
+            availablePlayers.splice(Math.max(bestIndices.i, bestIndices.j), 1);
+            availablePlayers.splice(Math.min(bestIndices.i, bestIndices.j), 1);
+          } else {
+            break;
+          }
+        }
+        
+        // Update existing matchups with new pairings
+        for (let i = 0; i < Math.min(existingMatchups.length, weekPairings.length); i++) {
+          await storage.updateMatchup(existingMatchups[i].id, {
+            player1Id: weekPairings[i].player1.id,
+            player2Id: weekPairings[i].player2.id,
+          });
+        }
+        
+        // Recalculate scores after updating
+        await calculateMatchupScores(season.id, week);
+      }
+      
+      res.json({ message: "Season matchups shuffled successfully with minimal repeats" });
+    } catch (error) {
+      console.error("Error shuffling season:", error);
+      res.status(500).json({ message: "Failed to shuffle season matchups" });
+    }
+  });
+
   app.patch('/api/matchups/:id', requireAuth, requireAdminPassword, async (req, res) => {
     try {
       const { id } = req.params;

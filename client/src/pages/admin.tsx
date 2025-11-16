@@ -53,6 +53,7 @@ export default function Admin() {
   const [newPlayer2Id, setNewPlayer2Id] = useState<string>("");
   const [activeUserSpots, setActiveUserSpots] = useState<number>(8);
   const [tempActiveUserSpots, setTempActiveUserSpots] = useState<number>(8);
+  const [seasonShuffleModified, setSeasonShuffleModified] = useState<boolean>(false);
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -182,6 +183,21 @@ export default function Admin() {
       toast({ title: "Success", description: "Matchups shuffled successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const shuffleSeasonMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/matchups/shuffle-season");
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Season matchups shuffled with minimal repeats" });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matchups"] });
+      setSeasonShuffleModified(false);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -579,9 +595,31 @@ export default function Admin() {
 
         {/* Matchups Tab */}
         <TabsContent value="matchups" className="space-y-6">
-          <div>
-            <h2 className="font-display text-2xl font-bold">Matchup Management</h2>
-            <p className="text-muted-foreground">View and edit matchups for all weeks</p>
+          <div className="flex justify-between items-start gap-4">
+            <div>
+              <h2 className="font-display text-2xl font-bold">Matchup Management</h2>
+              <p className="text-muted-foreground">View and edit matchups for all weeks</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setSeasonShuffleModified(true)}
+                disabled={shuffleSeasonMutation.isPending}
+                data-testid="button-shuffle-season"
+              >
+                Shuffle Season
+              </Button>
+              {seasonShuffleModified && (
+                <Button
+                  size="sm"
+                  onClick={() => shuffleSeasonMutation.mutate()}
+                  disabled={shuffleSeasonMutation.isPending}
+                  data-testid="button-save-season-shuffle"
+                >
+                  {shuffleSeasonMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Group matchups by week */}
