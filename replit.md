@@ -43,3 +43,24 @@ The frontend is built with React and TypeScript, utilizing TailwindCSS for utili
 - **AI Service**: OpenAI GPT-5.
 - **Frontend Libraries**: React, TypeScript, TailwindCSS, Shadcn UI, Wouter, TanStack Query.
 - **Backend Libraries**: Express.js, Node.js.
+
+## Recent Changes
+
+### November 16, 2025 - Profile Creation Feature & Record Calculation Fix
+- **Add Profile Functionality**:
+  - Added "Add Profile" button to both landing page and header profile selection dialogs
+  - Created profile creation form with firstName, lastName, email fields
+  - Backend endpoint `/api/auth/create-profile` validates input and auto-assigns sales rep numbers
+  - Automatic sales rep number assignment (1-10) for new profiles
+  - Email uniqueness validation with clear error messages
+  - Auto-selects newly created profile after successful creation
+  - Form validation with disabled submit until all required fields are filled
+  - Toast notifications for success/error feedback
+  - Profile creation available during initial login and when switching profiles
+  - Added "Return to Landing Page" button to all profile dialogs for easy navigation back to landing page
+- **Record Calculation Update**:
+  - Win/loss records now only count completed weeks (previous weeks)
+  - Current week matchups are excluded from record calculation until week is finished
+  - Applied to both matchups page stats and leaderboard calculations
+  - Win/loss trophy and status announcements only appear for previous weeks (not current week)
+  - Ensures records accurately reflect only finalized matchup results

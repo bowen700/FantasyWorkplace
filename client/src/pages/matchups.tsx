@@ -322,7 +322,7 @@ export default function Matchups() {
                 <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center font-bold text-xl">
                   VS
                 </div>
-                {myMatchup.winnerId && (
+                {myMatchup.winnerId && parseInt(selectedWeek || "0") < (season?.currentWeek || 0) && (
                   <div className="text-center">
                     <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
                     <div className="text-sm font-semibold">
