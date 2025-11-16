@@ -91,6 +91,15 @@ export default function Landing() {
     selectUserMutation.mutate(userId);
   };
 
+  const handleReturnToLanding = () => {
+    setShowPasswordDialog(false);
+    setShowUserSelection(false);
+    setShowCreateProfile(false);
+    setPassword("");
+    setPasswordError("");
+    setNewProfile({ firstName: "", lastName: "", email: "" });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -243,7 +252,15 @@ export default function Landing() {
               </Card>
             ))}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex justify-between gap-2">
+            <Button 
+              size="sm"
+              variant="ghost" 
+              onClick={handleReturnToLanding}
+              data-testid="button-return-landing"
+            >
+              Return to Landing Page
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => {
@@ -300,24 +317,34 @@ export default function Landing() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex justify-between gap-2">
             <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowCreateProfile(false);
-                setNewProfile({ firstName: "", lastName: "", email: "" });
-              }}
-              data-testid="button-cancel-create"
+              size="sm"
+              variant="ghost" 
+              onClick={handleReturnToLanding}
+              data-testid="button-return-landing"
             >
-              Cancel
+              Return to Landing Page
             </Button>
-            <Button
-              onClick={() => createProfileMutation.mutate(newProfile)}
-              disabled={!newProfile.firstName || !newProfile.lastName || !newProfile.email || createProfileMutation.isPending}
-              data-testid="button-submit-create"
-            >
-              {createProfileMutation.isPending ? "Creating..." : "Create Profile"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCreateProfile(false);
+                  setNewProfile({ firstName: "", lastName: "", email: "" });
+                }}
+                data-testid="button-cancel-create"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createProfileMutation.mutate(newProfile)}
+                disabled={!newProfile.firstName || !newProfile.lastName || !newProfile.email || createProfileMutation.isPending}
+                data-testid="button-submit-create"
+              >
+                {createProfileMutation.isPending ? "Creating..." : "Create Profile"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

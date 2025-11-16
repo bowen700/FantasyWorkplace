@@ -84,6 +84,16 @@ export function Header() {
     }
   };
 
+  const handleReturnToLanding = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+      queryClient.clear();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+
   return (
     <header className="flex items-center justify-between p-4 border-b bg-background">
       <SidebarTrigger data-testid="button-sidebar-toggle" />
@@ -150,7 +160,15 @@ export function Header() {
               </Card>
             ))}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex justify-between gap-2">
+            <Button 
+              size="sm"
+              variant="ghost" 
+              onClick={handleReturnToLanding}
+              data-testid="button-return-landing"
+            >
+              Return to Landing Page
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => {
@@ -207,24 +225,34 @@ export function Header() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex justify-between gap-2">
             <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowCreateProfile(false);
-                setNewProfile({ firstName: "", lastName: "", email: "" });
-              }}
-              data-testid="button-cancel-create"
+              size="sm"
+              variant="ghost" 
+              onClick={handleReturnToLanding}
+              data-testid="button-return-landing"
             >
-              Cancel
+              Return to Landing Page
             </Button>
-            <Button
-              onClick={() => createProfileMutation.mutate(newProfile)}
-              disabled={!newProfile.firstName || !newProfile.lastName || !newProfile.email || createProfileMutation.isPending}
-              data-testid="button-submit-create"
-            >
-              {createProfileMutation.isPending ? "Creating..." : "Create Profile"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCreateProfile(false);
+                  setNewProfile({ firstName: "", lastName: "", email: "" });
+                }}
+                data-testid="button-cancel-create"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createProfileMutation.mutate(newProfile)}
+                disabled={!newProfile.firstName || !newProfile.lastName || !newProfile.email || createProfileMutation.isPending}
+                data-testid="button-submit-create"
+              >
+                {createProfileMutation.isPending ? "Creating..." : "Create Profile"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
