@@ -399,22 +399,19 @@ export default function Matchups() {
             <CollapsibleContent className="mt-2 p-4 rounded-md bg-muted/50 text-sm space-y-2">
               <p className="font-semibold mb-2">Point Conversion System:</p>
               <div className="space-y-1 text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>• Sales Gross Profit:</span>
-                  <span className="font-medium">300 = 1 point</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>• Sales Revenue:</span>
-                  <span className="font-medium">3,000 = 1 point</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>• Leads Talked To:</span>
-                  <span className="font-medium">3 = 1 point</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>• Deals Closed:</span>
-                  <span className="font-medium">1 = 1 point</span>
-                </div>
+                {kpis?.filter((kpi) => kpi.isActive).map((kpi) => (
+                  <div key={kpi.id} className="flex justify-between">
+                    <span>• {kpi.name}:</span>
+                    <span className="font-medium font-mono text-xs">
+                      {kpi.conversionFormula || 'No formula set'}
+                    </span>
+                  </div>
+                ))}
+                {(!kpis || kpis.filter((kpi) => kpi.isActive).length === 0) && (
+                  <div className="text-center py-2 text-muted-foreground">
+                    No active KPIs configured
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-3 pt-2 border-t">
                 Your total score is the sum of points from all KPIs. The player with the higher total score wins the matchup.
