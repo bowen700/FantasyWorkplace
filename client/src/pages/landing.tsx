@@ -218,9 +218,9 @@ export default function Landing() {
                 setShowUserSelection(false);
                 setPassword("");
               }}
-              data-testid="button-cancel-user-selection"
+              data-testid="button-add-profile"
             >
-              Cancel
+              Add Profile
             </Button>
           </DialogFooter>
         </DialogContent>

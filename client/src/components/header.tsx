@@ -118,9 +118,9 @@ export function Header() {
             <Button 
               variant="outline" 
               onClick={() => setShowUserSelection(false)}
-              data-testid="button-cancel-change-profile"
+              data-testid="button-add-profile"
             >
-              Cancel
+              Add Profile
             </Button>
           </DialogFooter>
         </DialogContent>
