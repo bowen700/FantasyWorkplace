@@ -661,10 +661,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.deleteMatchupsByWeek(season.id, targetWeek);
       }
       
-      // Get all active users
+      // Get all active users, limited by activeUserSpots
       const allUsers = await storage.getAllUsers();
       const activeUsers = allUsers
-        .filter(u => u.role !== 'cio')
+        .filter(u => u.role !== 'cio' && u.salesRepNumber !== null && u.salesRepNumber <= season.activeUserSpots)
         .sort((a, b) => (a.salesRepNumber || 999) - (b.salesRepNumber || 999));
       
       // Generate matchups based on week type (regular season vs playoffs)
@@ -756,10 +756,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No active season" });
       }
       
-      // Get all active users
+      // Get all active users, limited by activeUserSpots
       const allUsers = await storage.getAllUsers();
       const activeUsers = allUsers
-        .filter(u => u.role !== 'cio' && u.salesRepNumber !== null)
+        .filter(u => u.role !== 'cio' && u.salesRepNumber !== null && u.salesRepNumber <= season.activeUserSpots)
         .sort((a, b) => (a.salesRepNumber || 999) - (b.salesRepNumber || 999));
       
       if (activeUsers.length < 2) {

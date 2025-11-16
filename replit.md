@@ -46,21 +46,26 @@ The frontend is built with React and TypeScript, utilizing TailwindCSS for utili
 
 ## Recent Changes
 
-### November 16, 2025 - Profile Creation Feature & Record Calculation Fix
-- **Add Profile Functionality**:
+### November 16, 2025 - Matchup Management & Active User Spots
+- **Shuffle Features**:
+  - Added individual week shuffle button (shuffle icon) next to Regenerate for each week
+  - Added "Shuffle Season" button with confirmation flow to shuffle entire regular season
+  - Season shuffle algorithm minimizes repeat matchups across all weeks using greedy pairing
+  - Per-week shuffle randomly reassigns pairings while keeping same players
+- **Active User Spots Enforcement**:
+  - Active user spots slider now enforces even numbers only (4, 6, 8, 10, 12, 14) with step=2
+  - Matchup generation now respects activeUserSpots limit: only users with salesRepNumber ≤ activeUserSpots are paired
+  - Number of matchups = activeUserSpots / 2 (e.g., 8 spots = 4 matchups, 10 spots = 5 matchups)
+  - Applied to all matchup generation: regular season, shuffle week, and shuffle season
+- **Profile Creation Feature**:
   - Added "Add Profile" button to both landing page and header profile selection dialogs
   - Created profile creation form with firstName, lastName, email fields
   - Backend endpoint `/api/auth/create-profile` validates input and auto-assigns sales rep numbers
-  - Automatic sales rep number assignment (1-10) for new profiles
   - Email uniqueness validation with clear error messages
   - Auto-selects newly created profile after successful creation
-  - Form validation with disabled submit until all required fields are filled
-  - Toast notifications for success/error feedback
-  - Profile creation available during initial login and when switching profiles
   - Added "Return to Landing Page" button to all profile dialogs for easy navigation back to landing page
 - **Record Calculation Update**:
   - Win/loss records now only count completed weeks (previous weeks)
   - Current week matchups are excluded from record calculation until week is finished
   - Applied to both matchups page stats and leaderboard calculations
   - Win/loss trophy and status announcements only appear for previous weeks (not current week)
-  - Ensures records accurately reflect only finalized matchup results
