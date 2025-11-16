@@ -630,38 +630,15 @@ export default function Admin() {
             return (
               <Card key={week}>
                 <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>
-                        Week {week} {isPlayoffWeek && "(Playoff)"}
-                      </CardTitle>
-                      <CardDescription>
-                        {weekMatchups.length > 0 
-                          ? `${weekMatchups.length} matchup${weekMatchups.length !== 1 ? 's' : ''} scheduled`
-                          : "No matchups generated yet"}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => shuffleMatchupsMutation.mutate(week)}
-                        disabled={shuffleMatchupsMutation.isPending}
-                        data-testid={`button-shuffle-week-${week}`}
-                      >
-                        <Shuffle className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => generateMatchupsMutation.mutate(week)}
-                        disabled={generateMatchupsMutation.isPending}
-                        data-testid={`button-regenerate-week-${week}`}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Regenerate
-                      </Button>
-                    </div>
+                  <div>
+                    <CardTitle>
+                      Week {week} {isPlayoffWeek && "(Playoff)"}
+                    </CardTitle>
+                    <CardDescription>
+                      {weekMatchups.length > 0 
+                        ? `${weekMatchups.length} matchup${weekMatchups.length !== 1 ? 's' : ''} scheduled`
+                        : "No matchups generated yet"}
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
