@@ -52,6 +52,7 @@ export default function Admin() {
   const [newPlayer1Id, setNewPlayer1Id] = useState<string>("");
   const [newPlayer2Id, setNewPlayer2Id] = useState<string>("");
   const [activeUserSpots, setActiveUserSpots] = useState<number>(8);
+  const [tempActiveUserSpots, setTempActiveUserSpots] = useState<number>(8);
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -210,6 +211,7 @@ export default function Admin() {
       return await apiRequest("PATCH", `/api/seasons/${season.id}`, { activeUserSpots: spots });
     },
     onSuccess: () => {
+      toast({ title: "Success", description: "Active user spots updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/seasons/active"] });
     },
     onError: (error: Error) => {
@@ -281,6 +283,7 @@ export default function Admin() {
   useEffect(() => {
     if (season?.activeUserSpots) {
       setActiveUserSpots(season.activeUserSpots);
+      setTempActiveUserSpots(season.activeUserSpots);
     }
   }, [season]);
 
@@ -779,11 +782,10 @@ export default function Admin() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <Label className="min-w-[100px]">{activeUserSpots} Spots</Label>
+                  <Label className="min-w-[100px]">{tempActiveUserSpots} Spots</Label>
                   <Slider
-                    value={[activeUserSpots]}
-                    onValueChange={(value) => setActiveUserSpots(value[0])}
-                    onValueCommit={(value) => updateActiveSpotsMutation.mutate(value[0])}
+                    value={[tempActiveUserSpots]}
+                    onValueChange={(value) => setTempActiveUserSpots(value[0])}
                     min={4}
                     max={14}
                     step={1}
@@ -794,6 +796,17 @@ export default function Admin() {
                 <p className="text-xs text-muted-foreground">
                   This controls how many users can be assigned active user numbers. Users beyond this limit will be placed on the waitlist.
                 </p>
+                {tempActiveUserSpots !== activeUserSpots && (
+                  <Button
+                    onClick={() => {
+                      updateActiveSpotsMutation.mutate(tempActiveUserSpots);
+                    }}
+                    disabled={updateActiveSpotsMutation.isPending}
+                    data-testid="button-save-active-spots"
+                  >
+                    {updateActiveSpotsMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
