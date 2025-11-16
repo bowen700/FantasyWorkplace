@@ -815,15 +815,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Update existing matchups with new pairings
-        for (let i = 0; i < Math.min(existingMatchups.length, weekPairings.length); i++) {
-          await storage.updateMatchup(existingMatchups[i].id, {
-            player1Id: weekPairings[i].player1.id,
-            player2Id: weekPairings[i].player2.id,
-          });
-        }
+        // Delete old matchups and create new ones to avoid constraint violations
+        await storage.deleteMatchupsByWeek(season.id, week);
         
-        // Recalculate scores after updating
+        // Create new matchups with shuffled pairings
+        const newMatchups: InsertMatchup[] = weekPairings.map(pairing => ({
+          seasonId: season.id,
+          week,
+          player1Id: pairing.player1.id,
+          player2Id: pairing.player2.id,
+          player1Score: null,
+          player2Score: null,
+          winnerId: null,
+          isPlayoff: false,
+        }));
+        
+        await storage.bulkCreateMatchups(newMatchups);
+        
+        // Recalculate scores after creating new matchups
         await calculateMatchupScores(season.id, week);
       }
       
