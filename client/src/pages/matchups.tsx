@@ -127,11 +127,29 @@ export default function Matchups() {
   const myStats = calculateUserStats(user?.id);
   const opponentStats = calculateUserStats(isPlayer1 ? myMatchup?.player2Id : myMatchup?.player1Id);
 
+  // Helper function to safely evaluate a formula
+  const evaluateFormula = (formula: string, value: number): number => {
+    try {
+      // Replace 'value' in the formula with the actual value
+      // Support basic math operations: +, -, *, /, parentheses
+      const sanitizedFormula = formula
+        .replace(/value/g, value.toString())
+        .replace(/[^0-9+\-*/().]/g, ''); // Remove any non-math characters
+      
+      // Use Function constructor for safe evaluation (restricted to math)
+      const result = new Function(`return ${sanitizedFormula}`)();
+      return typeof result === 'number' && !isNaN(result) ? result : 0;
+    } catch (error) {
+      console.error(`Error evaluating formula "${formula}" with value ${value}:`, error);
+      return 0;
+    }
+  };
+
   const getKpiBreakdown = (userId: string | undefined) => {
     if (!userId || !kpiData || !kpis) return [];
 
-    // Point conversion factors for each KPI
-    const kpiConversionFactors: Record<string, number> = {
+    // Default conversion factors for KPIs without formulas
+    const defaultConversionFactors: Record<string, number> = {
       "Sales Gross Profit": 300,    // 300 GP = 1 point
       "Sales Revenue": 3000,         // 3000 revenue = 1 point
       "Leads Talked To": 3,          // 3 leads = 1 point
@@ -144,8 +162,16 @@ export default function Matchups() {
       .map((kpi) => {
         const data = userKpiData.find((d) => d.kpiId === kpi.id);
         const value = data?.value ?? 0;
-        const conversionFactor = kpiConversionFactors[kpi.name] || 1;
-        const points = value / conversionFactor;
+        
+        // Use conversion formula if available, otherwise fall back to default factors
+        let points = 0;
+        if (kpi.conversionFormula) {
+          points = evaluateFormula(kpi.conversionFormula, value);
+        } else {
+          const conversionFactor = defaultConversionFactors[kpi.name] || 1;
+          points = value / conversionFactor;
+        }
+        
         return {
           name: kpi.name,
           value,
