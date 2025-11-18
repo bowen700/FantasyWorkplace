@@ -478,14 +478,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= KPI Data Routes =============
   app.get('/api/kpi-data/weekly/:week?', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
       const season = await storage.getActiveSeason();
       if (!season) {
         return res.status(404).json({ message: "No active season" });
       }
       
       const week = req.params.week ? parseInt(req.params.week) : season.currentWeek;
-      const data = await storage.getKpiDataByUserAndWeek(userId, season.id, week);
+      // Return all KPI data for the week (needed for matchups page to show both players' data)
+      const data = await storage.getKpiDataByWeek(season.id, week);
       res.json(data);
     } catch (error) {
       console.error("Error fetching KPI data:", error);

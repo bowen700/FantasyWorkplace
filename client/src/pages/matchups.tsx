@@ -132,9 +132,8 @@ export default function Matchups() {
     try {
       // Replace 'value' in the formula with the actual value
       // Support basic math operations: +, -, *, /, parentheses
-      const sanitizedFormula = formula
-        .replace(/value/g, value.toString())
-        .replace(/[^0-9+\-*/().]/g, ''); // Remove any non-math characters
+      const formulaWithValue = formula.replace(/value/g, value.toString());
+      const sanitizedFormula = formulaWithValue.replace(/[^0-9+\-*/().]/g, ''); // Remove any non-math characters
       
       // Use Function constructor for safe evaluation (restricted to math)
       const result = new Function(`return ${sanitizedFormula}`)();
@@ -157,6 +156,7 @@ export default function Matchups() {
     };
 
     const userKpiData = kpiData.filter((d) => d.userId === userId);
+    
     return kpis
       .filter((kpi) => kpi.isActive)
       .map((kpi) => {

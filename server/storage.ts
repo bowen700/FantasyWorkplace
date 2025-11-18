@@ -50,6 +50,7 @@ export interface IStorage {
 
   // KPI Data operations
   getKpiDataByUserAndWeek(userId: string, seasonId: string, week: number): Promise<KpiData[]>;
+  getKpiDataByWeek(seasonId: string, week: number): Promise<KpiData[]>;
   bulkInsertKpiData(data: InsertKpiData[]): Promise<KpiData[]>;
 
   // Matchup operations
@@ -195,6 +196,18 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(kpiData.userId, userId),
+          eq(kpiData.seasonId, seasonId),
+          eq(kpiData.week, week)
+        )
+      );
+  }
+
+  async getKpiDataByWeek(seasonId: string, week: number): Promise<KpiData[]> {
+    return await db
+      .select()
+      .from(kpiData)
+      .where(
+        and(
           eq(kpiData.seasonId, seasonId),
           eq(kpiData.week, week)
         )
