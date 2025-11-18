@@ -229,35 +229,37 @@ export default function Matchups() {
     setKpiInputs(newInputs);
   };
 
-  // Pre-populate all 4 KPIs when viewing current week
+  // Pre-populate all KPIs when viewing current week
   useEffect(() => {
-    if (!season || !kpis || !user || kpiDataLoading) return;
+    if (!season || !kpis || !user) return;
     
     const isCurrentWeek = parseInt(selectedWeek || "0") === season.currentWeek;
     const currentWeekNum = parseInt(selectedWeek || "0");
     
-    // Only re-populate if user or week has changed
+    // Only re-populate if user or week has changed, or if kpiData has loaded/changed
     const shouldRepopulate = 
       !lastPopulatedRef.current || 
       lastPopulatedRef.current.userId !== user.id ||
       lastPopulatedRef.current.week !== currentWeekNum;
     
-    if (isCurrentWeek && kpis.length > 0 && shouldRepopulate) {
-      const activeKpis = kpis.filter(k => k.isActive);
-      const prepopulatedInputs = activeKpis.map(kpi => {
-        const existingData = kpiData?.find(d => d.kpiId === kpi.id && d.userId === user.id);
-        return {
-          kpiId: kpi.id,
-          value: existingData?.value?.toString() || "0",
-        };
-      });
-      setKpiInputs(prepopulatedInputs);
-      lastPopulatedRef.current = { userId: user.id, week: currentWeekNum };
+    if (isCurrentWeek && kpis.length > 0 && !kpiDataLoading) {
+      if (shouldRepopulate) {
+        const activeKpis = kpis.filter(k => k.isActive);
+        const prepopulatedInputs = activeKpis.map(kpi => {
+          const existingData = kpiData?.find(d => d.kpiId === kpi.id && d.userId === user.id);
+          return {
+            kpiId: kpi.id,
+            value: existingData?.value?.toString() || "0",
+          };
+        });
+        setKpiInputs(prepopulatedInputs);
+        lastPopulatedRef.current = { userId: user.id, week: currentWeekNum };
+      }
     } else if (!isCurrentWeek && kpiInputs.length > 0) {
       setKpiInputs([]);
       lastPopulatedRef.current = null;
     }
-  }, [selectedWeek, season, kpis, kpiData, kpiDataLoading, user?.id]);
+  }, [selectedWeek, season, kpis, kpiData, kpiDataLoading, user]);
 
   const handleSubmit = () => {
     if (!season || !user) return;
