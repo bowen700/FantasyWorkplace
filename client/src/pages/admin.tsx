@@ -42,6 +42,8 @@ export default function Admin() {
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [deleteUserOpen, setDeleteUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteKpiOpen, setDeleteKpiOpen] = useState(false);
+  const [selectedKpi, setSelectedKpi] = useState<Kpi | null>(null);
   const [editRole, setEditRole] = useState<string>("");
   const [editSalesRepNumber, setEditSalesRepNumber] = useState<string>("");
   const [adminPassword, setAdminPassword] = useState<string>("");
@@ -645,7 +647,10 @@ export default function Admin() {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => deleteKpiMutation.mutate(kpi.id)}
+                      onClick={() => {
+                        setSelectedKpi(kpi);
+                        setDeleteKpiOpen(true);
+                      }}
                       data-testid={`button-delete-kpi-${kpi.id}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -694,6 +699,39 @@ export default function Admin() {
               </Card>
             ))}
           </div>
+
+          {/* Delete KPI Confirmation */}
+          <AlertDialog open={deleteKpiOpen} onOpenChange={setDeleteKpiOpen}>
+            <AlertDialogContent data-testid="dialog-delete-kpi">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete KPI?</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p>
+                    Are you sure you want to delete <strong>{selectedKpi?.name}</strong>?
+                  </p>
+                  <p className="text-destructive font-medium">
+                    This will permanently erase all scoring data associated with this KPI across all weeks and users.
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-delete-kpi">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (selectedKpi) {
+                      deleteKpiMutation.mutate(selectedKpi.id);
+                      setDeleteKpiOpen(false);
+                      setSelectedKpi(null);
+                    }
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  data-testid="button-confirm-delete-kpi"
+                >
+                  Delete KPI
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* Matchups Tab */}
