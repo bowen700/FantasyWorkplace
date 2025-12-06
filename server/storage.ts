@@ -185,6 +185,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteKpi(id: string): Promise<void> {
+    // First delete all related KPI data entries
+    await db.delete(kpiData).where(eq(kpiData.kpiId, id));
+    // Then delete the KPI itself
     await db.delete(kpis).where(eq(kpis.id, id));
   }
 
