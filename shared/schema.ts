@@ -59,6 +59,8 @@ export const seasons = pgTable("seasons", {
   playoffWeeks: integer("playoff_weeks").notNull().default(4),
   currentWeek: integer("current_week").notNull().default(1),
   activeUserSpots: integer("active_user_spots").notNull().default(8),
+  playoffBracketType: varchar("playoff_bracket_type", { length: 50 }),
+  playoffLocked: boolean("playoff_locked").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });

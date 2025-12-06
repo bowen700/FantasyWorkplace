@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle } from "lucide-react";
+import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle, Lock, Unlock, Trophy } from "lucide-react";
 import type { Kpi, Season, InsertKpi, InsertSeason, User } from "@shared/schema";
 
 interface MatchupWithPlayers {
@@ -60,6 +60,8 @@ export default function Admin() {
   const [editingSeasonName, setEditingSeasonName] = useState<boolean>(false);
   const [tempSeasonName, setTempSeasonName] = useState<string>("");
   const [newSeasonRegularWeeks, setNewSeasonRegularWeeks] = useState<string>("9");
+  const [matchupsSubTab, setMatchupsSubTab] = useState<"regular" | "playoffs">("regular");
+  const [selectedBracketType, setSelectedBracketType] = useState<string>("");
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -327,7 +329,31 @@ export default function Admin() {
     if (season?.name) {
       setTempSeasonName(season.name);
     }
+    if (season?.playoffBracketType) {
+      setSelectedBracketType(season.playoffBracketType);
+    }
   }, [season]);
+
+  // Get playoff bracket options based on playoff weeks (max 4 weeks)
+  const getPlayoffBracketOptions = (playoffWeeks: number) => {
+    const weeks = Math.min(playoffWeeks, 4);
+    const options: { value: string; label: string; description: string }[] = [];
+    
+    if (weeks >= 1) {
+      options.push({ value: "final-only", label: "Championship Only", description: "1 week - Top 2 face off in the final" });
+    }
+    if (weeks >= 2) {
+      options.push({ value: "semifinals-final", label: "Semifinals + Final", description: "2 weeks - Top 4 compete" });
+    }
+    if (weeks >= 3) {
+      options.push({ value: "quarters-semis-final", label: "Quarters + Semis + Final", description: "3 weeks - Top 8 compete" });
+    }
+    if (weeks >= 4) {
+      options.push({ value: "full-bracket-16", label: "Full 16-Team Bracket", description: "4 weeks - Top 16 compete" });
+    }
+    
+    return options;
+  };
 
   // Show password prompt if access not granted
   if (adminAccessLoading) {
@@ -741,140 +767,332 @@ export default function Admin() {
               <h2 className="font-display text-lg md:text-2xl font-bold">Matchup Management</h2>
               <p className="text-sm md:text-base text-muted-foreground">View and edit matchups for all weeks</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setSeasonShuffleModified(true)}
-                disabled={shuffleSeasonMutation.isPending}
-                data-testid="button-shuffle-season"
-              >
-                Shuffle Season
-              </Button>
-              {seasonShuffleModified && (
-                <Button
-                  size="sm"
-                  onClick={() => shuffleSeasonMutation.mutate()}
-                  disabled={shuffleSeasonMutation.isPending}
-                  data-testid="button-save-season-shuffle"
-                >
-                  {shuffleSeasonMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              )}
-            </div>
           </div>
 
-          {/* Group matchups by week */}
-          {season && Array.from({ length: season.regularSeasonWeeks + season.playoffWeeks }, (_, i) => i + 1).map((week) => {
-            const weekMatchups = allMatchups?.filter(m => m.week === week) || [];
-            const isPlayoffWeek = week > season.regularSeasonWeeks;
-            
-            return (
-              <Card key={week}>
-                <CardHeader>
-                  <div>
-                    <CardTitle>
-                      Week {week} {isPlayoffWeek && "(Playoff)"}
-                    </CardTitle>
-                    <CardDescription>
-                      {weekMatchups.length > 0 
-                        ? `${weekMatchups.length} matchup${weekMatchups.length !== 1 ? 's' : ''} scheduled`
-                        : "No matchups generated yet"}
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {weekMatchups.length > 0 ? (
-                    <div className="space-y-3">
-                      {weekMatchups.map((matchup) => (
-                        <div 
-                          key={matchup.id}
-                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
-                          data-testid={`matchup-${matchup.id}`}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            {/* Player 1 */}
-                            <div className="flex items-center gap-2 flex-1">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
-                                <AvatarFallback className="text-xs">
-                                  {matchup.player1?.firstName?.charAt(0)}{matchup.player1?.lastName?.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="font-medium">
-                                  {matchup.player1?.firstName} {matchup.player1?.lastName}
-                                </div>
-                                {matchup.player1Score !== null && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {matchup.player1Score.toFixed(1)} pts
+          {/* Sub-tabs for Regular Season vs Playoffs */}
+          <Tabs value={matchupsSubTab} onValueChange={(v) => setMatchupsSubTab(v as "regular" | "playoffs")}>
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="regular" data-testid="subtab-regular">Regular Season</TabsTrigger>
+              <TabsTrigger value="playoffs" data-testid="subtab-playoffs">
+                <Trophy className="h-4 w-4 mr-1" />
+                Playoffs
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Regular Season Sub-tab */}
+            <TabsContent value="regular" className="space-y-4 mt-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSeasonShuffleModified(true)}
+                  disabled={shuffleSeasonMutation.isPending}
+                  data-testid="button-shuffle-season"
+                >
+                  Shuffle Season
+                </Button>
+                {seasonShuffleModified && (
+                  <Button
+                    size="sm"
+                    onClick={() => shuffleSeasonMutation.mutate()}
+                    disabled={shuffleSeasonMutation.isPending}
+                    data-testid="button-save-season-shuffle"
+                  >
+                    {shuffleSeasonMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                )}
+              </div>
+
+              {/* Group regular season matchups by week */}
+              {season && Array.from({ length: season.regularSeasonWeeks }, (_, i) => i + 1).map((week) => {
+                const weekMatchups = allMatchups?.filter(m => m.week === week) || [];
+                
+                return (
+                  <Card key={week}>
+                    <CardHeader>
+                      <div>
+                        <CardTitle>Week {week}</CardTitle>
+                        <CardDescription>
+                          {weekMatchups.length > 0 
+                            ? `${weekMatchups.length} matchup${weekMatchups.length !== 1 ? 's' : ''} scheduled`
+                            : "No matchups generated yet"}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {weekMatchups.length > 0 ? (
+                        <div className="space-y-3">
+                          {weekMatchups.map((matchup) => (
+                            <div 
+                              key={matchup.id}
+                              className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                              data-testid={`matchup-${matchup.id}`}
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-xs">
+                                      {matchup.player1?.firstName?.charAt(0)}{matchup.player1?.lastName?.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="font-medium">
+                                    {matchup.player1?.firstName} {matchup.player1?.lastName}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* VS */}
-                            <div className="text-sm font-semibold text-muted-foreground px-4">
-                              VS
-                            </div>
-
-                            {/* Player 2 */}
-                            <div className="flex items-center gap-2 flex-1 justify-end">
-                              <div className="text-right">
-                                <div className="font-medium">
-                                  {matchup.player2?.firstName} {matchup.player2?.lastName}
                                 </div>
-                                {matchup.player2Score !== null && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {matchup.player2Score.toFixed(1)} pts
+                                <div className="text-sm font-semibold text-muted-foreground px-4">VS</div>
+                                <div className="flex items-center gap-2 flex-1 justify-end">
+                                  <div className="font-medium">
+                                    {matchup.player2?.firstName} {matchup.player2?.lastName}
                                   </div>
-                                )}
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-xs">
+                                      {matchup.player2?.firstName?.charAt(0)}{matchup.player2?.lastName?.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
                               </div>
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
-                                <AvatarFallback className="text-xs">
-                                  {matchup.player2?.firstName?.charAt(0)}{matchup.player2?.lastName?.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedMatchup(matchup);
+                                  setNewPlayer1Id(matchup.player1Id);
+                                  setNewPlayer2Id(matchup.player2Id);
+                                  setEditMatchupOpen(true);
+                                }}
+                                data-testid={`button-edit-matchup-${matchup.id}`}
+                              >
+                                <ArrowLeftRight className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </div>
-
-                          {/* Edit Button */}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No matchups for this week</p>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedMatchup(matchup);
-                              setNewPlayer1Id(matchup.player1Id);
-                              setNewPlayer2Id(matchup.player2Id);
-                              setEditMatchupOpen(true);
-                            }}
-                            data-testid={`button-edit-matchup-${matchup.id}`}
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => generateMatchupsMutation.mutate(week)}
+                            disabled={generateMatchupsMutation.isPending}
+                            data-testid={`button-generate-week-${week}`}
                           >
-                            <ArrowLeftRight className="h-4 w-4" />
+                            <Play className="h-4 w-4 mr-2" />
+                            Generate Matchups
                           </Button>
                         </div>
-                      ))}
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </TabsContent>
+
+            {/* Playoffs Sub-tab */}
+            <TabsContent value="playoffs" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader className="p-4 md:p-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-primary" />
+                        Playoff Bracket Configuration
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Select tournament format based on {season?.playoffWeeks || 0} playoff weeks
+                      </CardDescription>
                     </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No matchups for this week</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
-                        onClick={() => generateMatchupsMutation.mutate(week)}
-                        disabled={generateMatchupsMutation.isPending}
-                        data-testid={`button-generate-week-${week}`}
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Generate Matchups
-                      </Button>
-                    </div>
+                    {season?.playoffLocked ? (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Lock className="h-3 w-3" />
+                        Locked
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Unlock className="h-3 w-3" />
+                        Unlocked
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
+                  {season && (
+                    <>
+                      <div className="space-y-3">
+                        <Label>Select Bracket Format</Label>
+                        <div className="grid gap-3">
+                          {getPlayoffBracketOptions(season.playoffWeeks).map((option) => (
+                            <div
+                              key={option.value}
+                              className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                                selectedBracketType === option.value
+                                  ? "border-primary bg-primary/5"
+                                  : "hover-elevate"
+                              } ${season.playoffLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+                              onClick={() => {
+                                if (!season.playoffLocked) {
+                                  setSelectedBracketType(option.value);
+                                }
+                              }}
+                              data-testid={`bracket-option-${option.value}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  selectedBracketType === option.value
+                                    ? "border-primary bg-primary"
+                                    : "border-muted-foreground"
+                                }`}>
+                                  {selectedBracketType === option.value && (
+                                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium">{option.label}</div>
+                                  <div className="text-sm text-muted-foreground">{option.description}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                        {!season.playoffLocked && selectedBracketType && selectedBracketType !== season.playoffBracketType && (
+                          <Button
+                            onClick={() => {
+                              updateSeasonMutation.mutate({
+                                id: season.id,
+                                data: { playoffBracketType: selectedBracketType }
+                              });
+                            }}
+                            disabled={updateSeasonMutation.isPending}
+                            data-testid="button-save-bracket"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            {updateSeasonMutation.isPending ? "Saving..." : "Save Bracket Selection"}
+                          </Button>
+                        )}
+                        
+                        <Button
+                          variant={season.playoffLocked ? "destructive" : "outline"}
+                          onClick={() => {
+                            updateSeasonMutation.mutate({
+                              id: season.id,
+                              data: { playoffLocked: !season.playoffLocked }
+                            });
+                          }}
+                          disabled={updateSeasonMutation.isPending || (!season.playoffBracketType && !season.playoffLocked)}
+                          data-testid="button-toggle-lock"
+                        >
+                          {season.playoffLocked ? (
+                            <>
+                              <Unlock className="h-4 w-4 mr-2" />
+                              Unlock Playoffs
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-4 w-4 mr-2" />
+                              Lock Playoffs
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {season.playoffLocked && (
+                        <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                          Playoffs are locked. The tournament bracket cannot be changed until unlocked.
+                        </p>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
-            );
-          })}
+
+              {/* Playoff week matchups */}
+              {season && Array.from({ length: Math.min(season.playoffWeeks, 4) }, (_, i) => season.regularSeasonWeeks + i + 1).map((week) => {
+                const weekMatchups = allMatchups?.filter(m => m.week === week) || [];
+                const playoffRound = week - season.regularSeasonWeeks;
+                const roundName = playoffRound === 1 ? "Quarterfinals" : playoffRound === 2 ? "Semifinals" : playoffRound === 3 ? "Finals" : `Round ${playoffRound}`;
+                
+                return (
+                  <Card key={week}>
+                    <CardHeader className="p-4 md:p-6">
+                      <div>
+                        <CardTitle className="text-base md:text-lg">
+                          Week {week} - {roundName}
+                        </CardTitle>
+                        <CardDescription className="text-sm">
+                          {weekMatchups.length > 0 
+                            ? `${weekMatchups.length} matchup${weekMatchups.length !== 1 ? 's' : ''} scheduled`
+                            : "No matchups generated yet"}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
+                      {weekMatchups.length > 0 ? (
+                        <div className="space-y-3">
+                          {weekMatchups.map((matchup) => (
+                            <div 
+                              key={matchup.id}
+                              className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                              data-testid={`playoff-matchup-${matchup.id}`}
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={matchup.player1?.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-xs">
+                                      {matchup.player1?.firstName?.charAt(0)}{matchup.player1?.lastName?.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="font-medium">
+                                    {matchup.player1?.firstName} {matchup.player1?.lastName}
+                                  </div>
+                                </div>
+                                <div className="text-sm font-semibold text-muted-foreground px-4">VS</div>
+                                <div className="flex items-center gap-2 flex-1 justify-end">
+                                  <div className="font-medium">
+                                    {matchup.player2?.firstName} {matchup.player2?.lastName}
+                                  </div>
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={matchup.player2?.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-xs">
+                                      {matchup.player2?.firstName?.charAt(0)}{matchup.player2?.lastName?.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                              </div>
+                              {!season.playoffLocked && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSelectedMatchup(matchup);
+                                    setNewPlayer1Id(matchup.player1Id);
+                                    setNewPlayer2Id(matchup.player2Id);
+                                    setEditMatchupOpen(true);
+                                  }}
+                                  data-testid={`button-edit-playoff-matchup-${matchup.id}`}
+                                >
+                                  <ArrowLeftRight className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No matchups for this playoff round</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </TabsContent>
+          </Tabs>
 
           {/* Edit Matchup Dialog */}
           <Dialog open={editMatchupOpen} onOpenChange={setEditMatchupOpen}>
