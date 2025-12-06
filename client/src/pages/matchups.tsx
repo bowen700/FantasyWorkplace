@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Trophy, Plus, Trash2, ChevronDown, AlertCircle } from "lucide-react";
+import { Trophy, ChevronDown, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { Matchup, Season, User, Kpi, KpiData, InsertKpiData } from "@shared/schema";
 
@@ -214,14 +214,6 @@ export default function Matchups() {
       });
     },
   });
-
-  const addKpiInput = () => {
-    setKpiInputs([...kpiInputs, { kpiId: "", value: "" }]);
-  };
-
-  const removeKpiInput = (index: number) => {
-    setKpiInputs(kpiInputs.filter((_, i) => i !== index));
-  };
 
   const updateKpiInput = (index: number, field: keyof KpiInput, value: string) => {
     const newInputs = [...kpiInputs];
@@ -447,62 +439,35 @@ export default function Matchups() {
             </CollapsibleContent>
           </Collapsible>
 
-          {kpiInputs.map((input, index) => (
-            <div key={index} className="flex items-end gap-4">
-              <div className="flex-1">
-                <Label htmlFor={`kpi-${index}`}>KPI</Label>
-                <Select
-                  value={input.kpiId}
-                  onValueChange={(value) => updateKpiInput(index, "kpiId", value)}
-                >
-                  <SelectTrigger id={`kpi-${index}`} data-testid={`select-kpi-${index}`}>
-                    <SelectValue placeholder="Select KPI" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {kpis?.filter((kpi) => kpi.isActive).map((kpi) => (
-                      <SelectItem key={kpi.id} value={kpi.id}>
-                        {kpi.name} {kpi.unit && `(${kpi.unit})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {kpiInputs.map((input, index) => {
+            const kpi = kpis?.find(k => k.id === input.kpiId);
+            return (
+              <div key={input.kpiId} className="flex items-end gap-4">
+                <div className="flex-1">
+                  <Label>{kpi?.name} {kpi?.unit && `(${kpi.unit})`}</Label>
+                </div>
+                <div className="flex-1">
+                  <Input
+                    id={`value-${index}`}
+                    type="number"
+                    step="0.01"
+                    value={input.value}
+                    onChange={(e) => updateKpiInput(index, "value", e.target.value)}
+                    placeholder="Enter value"
+                    data-testid={`input-value-${kpi?.id}`}
+                  />
+                </div>
               </div>
-              <div className="flex-1">
-                <Label htmlFor={`value-${index}`}>Value</Label>
-                <Input
-                  id={`value-${index}`}
-                  type="number"
-                  step="0.01"
-                  value={input.value}
-                  onChange={(e) => updateKpiInput(index, "value", e.target.value)}
-                  placeholder="Enter value"
-                  data-testid={`input-value-${index}`}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => removeKpiInput(index)}
-                data-testid={`button-remove-${index}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+            );
+          })}
 
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={addKpiInput} data-testid="button-add-kpi">
-              <Plus className="h-4 w-4 mr-2" />
-              Add KPI
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={kpiInputs.length === 0 || submitKpiMutation.isPending}
-              data-testid="button-submit"
-            >
-              {submitKpiMutation.isPending ? "Submitting..." : "Submit These KPI Adjustments"}
-            </Button>
-          </div>
+          <Button
+            onClick={handleSubmit}
+            disabled={kpiInputs.length === 0 || submitKpiMutation.isPending}
+            data-testid="button-submit"
+          >
+            {submitKpiMutation.isPending ? "Submitting..." : "Submit KPI Values"}
+          </Button>
             </CardContent>
           </Card>
         </>
