@@ -281,14 +281,14 @@ export default function Matchups() {
   const isLoading = matchupsLoading || kpiDataLoading;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-4xl font-bold mb-2">Week {selectedWeek || season?.currentWeek} Matchup</h1>
-          <p className="text-muted-foreground">Your head-to-head competition</p>
+          <h1 className="font-display text-2xl md:text-4xl font-bold mb-1 md:mb-2">Week {selectedWeek || season?.currentWeek} Matchup</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Your head-to-head competition</p>
         </div>
         <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-          <SelectTrigger className="w-40" data-testid="select-week">
+          <SelectTrigger className="w-32 md:w-40" data-testid="select-week">
             <SelectValue placeholder="Select week" />
           </SelectTrigger>
           <SelectContent>
@@ -305,29 +305,32 @@ export default function Matchups() {
         <Skeleton className="h-96" />
       ) : myMatchup && myUser && opponentUser ? (
         <Card className="border-primary">
-          <CardContent className="p-8">
-            <div className="grid grid-cols-3 gap-8 items-center">
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-3 gap-2 md:gap-8 items-center">
               {/* Current User */}
-              <div className="flex flex-col items-center text-center space-y-4">
-                <Avatar className="h-32 w-32 border-4 border-primary">
+              <div className="flex flex-col items-center text-center space-y-2 md:space-y-4">
+                <Avatar className="h-16 w-16 md:h-32 md:w-32 border-2 md:border-4 border-primary">
                   <AvatarImage src={myUser.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-3xl">{getInitials(myUser)}</AvatarFallback>
+                  <AvatarFallback className="text-lg md:text-3xl">{getInitials(myUser)}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-bold text-xl mb-1">
+                  <div className="font-bold text-sm md:text-xl mb-1 line-clamp-1">
                     {myUser.firstName} {myUser.lastName}
                   </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
+                  <div className="hidden md:block text-sm text-muted-foreground space-y-1">
                     <div>Record: {myStats.wins}-{myStats.losses}</div>
                     <div>Avg: {myStats.averageScore.toFixed(1)} pts</div>
                   </div>
+                  <div className="md:hidden text-xs text-muted-foreground">
+                    {myStats.wins}-{myStats.losses}
+                  </div>
                 </div>
                 
-                <div className="text-6xl font-bold font-display text-primary">
+                <div className="text-2xl md:text-6xl font-bold font-display text-primary">
                   {myScore !== null && myScore !== undefined ? myScore.toFixed(1) : "-"}
                 </div>
 
-                <div className="w-full space-y-2">
+                <div className="hidden md:block w-full space-y-2">
                   {myKpiBreakdown.map((kpi, index) => (
                     <div key={index} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{kpi.name}</span>
@@ -338,14 +341,14 @@ export default function Matchups() {
               </div>
 
               {/* VS Badge */}
-              <div className="flex flex-col items-center space-y-4">
-                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center font-bold text-xl">
+              <div className="flex flex-col items-center space-y-2 md:space-y-4">
+                <div className="h-10 w-10 md:h-20 md:w-20 rounded-full bg-muted flex items-center justify-center font-bold text-sm md:text-xl">
                   VS
                 </div>
                 {myMatchup.winnerId && parseInt(selectedWeek || "0") < (season?.currentWeek || 0) && (
                   <div className="text-center">
-                    <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
-                    <div className="text-sm font-semibold">
+                    <Trophy className="h-5 w-5 md:h-8 md:w-8 text-primary mx-auto mb-1 md:mb-2" />
+                    <div className="text-xs md:text-sm font-semibold">
                       {myMatchup.winnerId === user?.id ? "You Win!" : "Opponent Wins"}
                     </div>
                   </div>
@@ -353,26 +356,29 @@ export default function Matchups() {
               </div>
 
               {/* Opponent */}
-              <div className="flex flex-col items-center text-center space-y-4">
-                <Avatar className="h-32 w-32 border-4 border-border">
+              <div className="flex flex-col items-center text-center space-y-2 md:space-y-4">
+                <Avatar className="h-16 w-16 md:h-32 md:w-32 border-2 md:border-4 border-border">
                   <AvatarImage src={opponentUser.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-3xl">{getInitials(opponentUser)}</AvatarFallback>
+                  <AvatarFallback className="text-lg md:text-3xl">{getInitials(opponentUser)}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-bold text-xl mb-1">
+                  <div className="font-bold text-sm md:text-xl mb-1 line-clamp-1">
                     {opponentUser.firstName} {opponentUser.lastName}
                   </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
+                  <div className="hidden md:block text-sm text-muted-foreground space-y-1">
                     <div>Record: {opponentStats.wins}-{opponentStats.losses}</div>
                     <div>Avg: {opponentStats.averageScore.toFixed(1)} pts</div>
                   </div>
+                  <div className="md:hidden text-xs text-muted-foreground">
+                    {opponentStats.wins}-{opponentStats.losses}
+                  </div>
                 </div>
                 
-                <div className="text-6xl font-bold font-display">
+                <div className="text-2xl md:text-6xl font-bold font-display">
                   {opponentScore !== null && opponentScore !== undefined ? opponentScore.toFixed(1) : "-"}
                 </div>
 
-                <div className="w-full space-y-2">
+                <div className="hidden md:block w-full space-y-2">
                   {opponentKpiBreakdown.map((kpi, index) => (
                     <div key={index} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{kpi.name}</span>

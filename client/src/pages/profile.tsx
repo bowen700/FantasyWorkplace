@@ -113,34 +113,34 @@ export default function Profile() {
   const lockedBadges = badgesWithStatus.filter((b) => !b.earned);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="font-display text-4xl font-bold mb-2">Profile</h1>
-        <p className="text-muted-foreground">
+        <h1 className="font-display text-2xl md:text-4xl font-bold mb-1 md:mb-2">Profile</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Manage your profile and view your achievements
         </p>
       </div>
 
       {/* Profile Editing Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Edit Profile</CardTitle>
-          <CardDescription>Update your name and profile picture</CardDescription>
+        <CardHeader className="p-4 md:p-6">
+          <CardTitle className="text-lg md:text-xl">Edit Profile</CardTitle>
+          <CardDescription className="text-sm">Update your name and profile picture</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
+        <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4 md:space-y-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6">
+            <div className="relative flex-shrink-0">
+              <Avatar className="h-20 w-20 md:h-24 md:w-24">
                 <AvatarImage src={profileImageUrl} />
-                <AvatarFallback className="text-2xl">
+                <AvatarFallback className="text-xl md:text-2xl">
                   {firstName?.charAt(0)}{lastName?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover-elevate">
-                <Camera className="h-4 w-4 text-primary-foreground" />
+              <div className="absolute bottom-0 right-0 h-7 w-7 md:h-8 md:w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover-elevate">
+                <Camera className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />
               </div>
             </div>
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 w-full space-y-2">
               <Label htmlFor="profileImageUrl">Profile Picture URL</Label>
               <Input
                 id="profileImageUrl"
@@ -190,69 +190,69 @@ export default function Profile() {
 
       {/* Badges & Achievements Section */}
       <div>
-        <h2 className="font-display text-3xl font-bold mb-2">Badges & Achievements</h2>
-        <p className="text-muted-foreground">
+        <h2 className="font-display text-xl md:text-3xl font-bold mb-1 md:mb-2">Badges & Achievements</h2>
+        <p className="text-sm md:text-base text-muted-foreground">
           Collect badges for your accomplishments throughout the season
         </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-2 md:gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Badges</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Badges</CardTitle>
+            <Award className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-display">{earnedBadges.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {allBadges?.length ? `${earnedBadges.length}/${allBadges.length} earned` : "Loading..."}
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold font-display">{earnedBadges.length}</div>
+            <p className="text-[10px] md:text-xs text-muted-foreground">
+              {allBadges?.length ? `${earnedBadges.length}/${allBadges.length}` : "..."}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Complete</CardTitle>
+            <Target className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-display">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold font-display">
               {allBadges?.length ? Math.round((earnedBadges.length / allBadges.length) * 100) : 0}%
             </div>
-            <p className="text-xs text-muted-foreground">Collection progress</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground">Progress</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Recent</CardTitle>
+            <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-display">
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-xl md:text-2xl font-bold font-display">
               {earnedBadges.filter((b) => {
                 const earnedDate = b.earnedAt ? new Date(b.earnedAt) : null;
                 const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
                 return earnedDate && earnedDate > weekAgo;
               }).length}
             </div>
-            <p className="text-xs text-muted-foreground">Earned this week</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground">This week</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Earned Badges */}
       <div>
-        <h2 className="font-display text-2xl font-bold mb-4">Earned Badges</h2>
+        <h2 className="font-display text-lg md:text-2xl font-bold mb-3 md:mb-4">Earned Badges</h2>
         {badgesLoading || userBadgesLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-40" />
             ))}
           </div>
         ) : earnedBadges.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {earnedBadges.map((badge) => {
               const Icon = getIconComponent(badge.icon);
               return (
@@ -300,8 +300,8 @@ export default function Profile() {
       {/* Locked Badges */}
       {lockedBadges.length > 0 && (
         <div>
-          <h2 className="font-display text-2xl font-bold mb-4">Locked Badges</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="font-display text-lg md:text-2xl font-bold mb-3 md:mb-4">Locked Badges</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {lockedBadges.map((badge) => {
               const Icon = getIconComponent(badge.icon);
               return (

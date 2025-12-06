@@ -101,14 +101,14 @@ export default function League() {
     .sort((a, b) => a - b);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-4xl font-bold mb-2">League</h1>
-          <p className="text-muted-foreground">Browse all matchups across the season</p>
+          <h1 className="font-display text-2xl md:text-4xl font-bold mb-1 md:mb-2">League</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Browse all matchups across the season</p>
         </div>
         <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-          <SelectTrigger className="w-40" data-testid="select-week">
+          <SelectTrigger className="w-32 md:w-40" data-testid="select-week">
             <SelectValue placeholder="Select week" />
           </SelectTrigger>
           <SelectContent>
@@ -152,8 +152,8 @@ export default function League() {
                 {/* Playoff bracket visualization for weeks 10-12 */}
                 {isPlayoffWeek ? (
                   <Card>
-                    <CardContent className="p-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <CardContent className="p-4 md:p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
                         {/* Column 1: Quarterfinals (Week 10) or Seed 1 Bracket (Week 11+) */}
                         <div className="space-y-4">
                           <h3 className="font-semibold text-center mb-4">
@@ -472,13 +472,13 @@ export default function League() {
 
       {/* Leaderboard Section */}
       <div>
-        <h2 className="font-display text-3xl font-bold mb-4">Leaderboard</h2>
+        <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">Leaderboard</h2>
         <Card>
-          <CardHeader>
-            <CardTitle>Season Rankings</CardTitle>
-            <CardDescription>Top performers compete for playoff spots</CardDescription>
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-lg md:text-xl">Season Rankings</CardTitle>
+            <CardDescription className="text-sm">Top performers compete for playoff spots</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
             {leaderboardLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -490,43 +490,43 @@ export default function League() {
                 {leaderboard.map((entry, index) => (
                   <div
                     key={entry.user.id}
-                    className={`flex items-center gap-4 p-4 rounded-md hover-elevate ${
+                    className={`flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-3 md:p-4 rounded-md hover-elevate ${
                       index < 3 ? "border border-primary/20" : "border"
                     }`}
                     data-testid={`leaderboard-entry-${entry.user.id}`}
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="w-16 text-center">{getRankBadge(entry.rank)}</div>
+                      <div className="w-12 md:w-16 text-center">{getRankBadge(entry.rank)}</div>
 
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-10 w-10 md:h-12 md:w-12">
                         <AvatarImage src={entry.user.profileImageUrl || undefined} />
                         <AvatarFallback>{getInitials(entry.user)}</AvatarFallback>
                       </Avatar>
 
-                      <div className="flex-1">
-                        <div className="font-semibold">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm md:text-base truncate">
                           {entry.user.firstName} {entry.user.lastName}
                         </div>
-                        <div className="text-sm text-muted-foreground">{entry.user.email}</div>
+                        <div className="hidden md:block text-sm text-muted-foreground">{entry.user.email}</div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6 text-center">
+                    <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 text-center pl-12 md:pl-0">
                       <div>
-                        <div className="text-sm text-muted-foreground">Record</div>
-                        <div className="font-semibold">
+                        <div className="text-xs md:text-sm text-muted-foreground">Record</div>
+                        <div className="font-semibold text-sm md:text-base">
                           {entry.wins}-{entry.losses}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-sm text-muted-foreground">Points</div>
-                        <div className="font-bold font-display text-lg">{entry.totalPoints.toFixed(1)}</div>
+                        <div className="text-xs md:text-sm text-muted-foreground">Points</div>
+                        <div className="font-bold font-display text-base md:text-lg">{entry.totalPoints.toFixed(1)}</div>
                       </div>
 
                       <div>
-                        <div className="text-sm text-muted-foreground">Win %</div>
-                        <div className="font-semibold">
+                        <div className="text-xs md:text-sm text-muted-foreground">Win %</div>
+                        <div className="font-semibold text-sm md:text-base">
                           {entry.wins + entry.losses > 0
                             ? `${((entry.wins / (entry.wins + entry.losses)) * 100).toFixed(0)}%`
                             : "0%"}
@@ -534,7 +534,7 @@ export default function League() {
                       </div>
 
                       {entry.trend && (
-                        <div className="w-8 flex justify-center">{getTrendIcon(entry.trend)}</div>
+                        <div className="w-6 md:w-8 flex justify-center">{getTrendIcon(entry.trend)}</div>
                       )}
                     </div>
                   </div>

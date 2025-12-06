@@ -382,16 +382,16 @@ export default function Admin() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="font-display text-4xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Manage KPIs, seasons, and matchups</p>
+        <h1 className="font-display text-2xl md:text-4xl font-bold mb-1 md:mb-2">Admin Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Manage KPIs, seasons, and matchups</p>
       </div>
 
       {/* Season Management Section */}
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="font-display text-2xl font-bold">Season Management</h2>
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between gap-2 sm:items-center">
+          <h2 className="font-display text-lg md:text-2xl font-bold">Season Management</h2>
           <Dialog open={newSeasonOpen} onOpenChange={setNewSeasonOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-create-season">
@@ -458,7 +458,7 @@ export default function Admin() {
 
         {season && (
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 md:p-6">
               <div className="flex items-center justify-between gap-2">
                 {editingSeasonName ? (
                   <div className="flex items-center gap-2 flex-1">
@@ -515,8 +515,8 @@ export default function Admin() {
                 {new Date(season.endDate).toLocaleDateString()}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4 md:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Current Week:</span>{" "}
                   <span className="font-semibold">{season.currentWeek}</span>
@@ -590,17 +590,17 @@ export default function Admin() {
         )}
       </div>
 
-      <Tabs defaultValue="kpis" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
-          <TabsTrigger value="matchups" data-testid="tab-matchups">Matchups</TabsTrigger>
-          <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
+      <Tabs defaultValue="kpis" className="space-y-4 md:space-y-6">
+        <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
+          <TabsTrigger value="kpis" data-testid="tab-kpis" className="text-xs sm:text-sm">KPIs</TabsTrigger>
+          <TabsTrigger value="matchups" data-testid="tab-matchups" className="text-xs sm:text-sm">Matchups</TabsTrigger>
+          <TabsTrigger value="users" data-testid="tab-users" className="text-xs sm:text-sm">Users</TabsTrigger>
         </TabsList>
 
         {/* KPIs Tab */}
-        <TabsContent value="kpis" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="font-display text-2xl font-bold">KPI Configuration</h2>
+        <TabsContent value="kpis" className="space-y-4 md:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between gap-2 sm:items-center">
+            <h2 className="font-display text-lg md:text-2xl font-bold">KPI Configuration</h2>
             <Dialog open={newKpiOpen} onOpenChange={setNewKpiOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-add-kpi">
@@ -735,11 +735,11 @@ export default function Admin() {
         </TabsContent>
 
         {/* Matchups Tab */}
-        <TabsContent value="matchups" className="space-y-6">
-          <div className="flex justify-between items-start gap-4">
+        <TabsContent value="matchups" className="space-y-4 md:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between gap-3 sm:items-start">
             <div>
-              <h2 className="font-display text-2xl font-bold">Matchup Management</h2>
-              <p className="text-muted-foreground">View and edit matchups for all weeks</p>
+              <h2 className="font-display text-lg md:text-2xl font-bold">Matchup Management</h2>
+              <p className="text-sm md:text-base text-muted-foreground">View and edit matchups for all weeks</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -948,17 +948,17 @@ export default function Admin() {
         </TabsContent>
 
         {/* Users Tab */}
-        <TabsContent value="users" className="space-y-6">
+        <TabsContent value="users" className="space-y-4 md:space-y-6">
           <div>
-            <h2 className="font-display text-2xl font-bold">User Management</h2>
-            <p className="text-muted-foreground">Manage league participants and waitlist</p>
+            <h2 className="font-display text-lg md:text-2xl font-bold">User Management</h2>
+            <p className="text-sm md:text-base text-muted-foreground">Manage league participants and waitlist</p>
           </div>
 
           {/* Active User Spots Slider */}
           <Card>
-            <CardHeader>
-              <CardTitle>Number of Active User Spots</CardTitle>
-              <CardDescription>Adjust the number of users that can be actively matched up (4-14)</CardDescription>
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg">Active User Spots</CardTitle>
+              <CardDescription className="text-sm">Adjust active matchup slots (4-14)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -1033,12 +1033,13 @@ export default function Admin() {
 
           {/* Users Table */}
           <Card>
-            <CardHeader>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>View and manage all registered users</CardDescription>
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg">All Users</CardTitle>
+              <CardDescription className="text-sm">View and manage all registered users</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
               {users && users.length > 0 ? (
+                <div className="overflow-x-auto -mx-4 md:mx-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1118,6 +1119,7 @@ export default function Admin() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <p className="text-center text-muted-foreground py-8">No users found</p>
               )}

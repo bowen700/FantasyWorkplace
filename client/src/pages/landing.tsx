@@ -106,16 +106,16 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative h-96 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
+      <div className="relative h-72 md:h-96 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/50 to-background"></div>
         <div className="relative z-10 text-center px-4 max-w-4xl">
-          <div className="flex justify-center mb-6">
-            <Trophy className="h-20 w-20 text-primary" />
+          <div className="flex justify-center mb-4 md:mb-6">
+            <Trophy className="h-14 w-14 md:h-20 md:w-20 text-primary" />
           </div>
-          <h1 className="font-display text-5xl md:text-7xl font-bold mb-4">
+          <h1 className="font-display text-3xl sm:text-5xl md:text-7xl font-bold mb-2 md:mb-4">
             Fantasy Workplace
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8">
+          <p className="text-base sm:text-xl md:text-2xl text-muted-foreground mb-6 md:mb-8">
             Turn employee performance into friendly, gamified competition
           </p>
           <Button
@@ -130,7 +130,7 @@ export default function Landing() {
       </div>
 
       {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
