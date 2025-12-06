@@ -334,26 +334,31 @@ export default function Admin() {
     }
   }, [season]);
 
-  // Get playoff bracket options based on playoff weeks (max 4 weeks)
-  const getPlayoffBracketOptions = (playoffWeeks: number) => {
-    const weeks = Math.min(playoffWeeks, 4);
-    const options: { value: string; label: string; description: string }[] = [];
-    
-    if (weeks >= 1) {
-      options.push({ value: "final-only", label: "Championship Only", description: "1 week - Top 2 face off in the final" });
+  // Map bracket type to number of playoff weeks
+  const getPlayoffWeeksFromBracket = (bracketType: string | null): number => {
+    switch (bracketType) {
+      case "final-only": return 1;
+      case "semifinals-final": return 2;
+      case "quarters-semis-final": return 3;
+      case "full-bracket-16": return 4;
+      default: return 3; // Default to 3 weeks
     }
-    if (weeks >= 2) {
-      options.push({ value: "semifinals-final", label: "Semifinals + Final", description: "2 weeks - Top 4 compete" });
-    }
-    if (weeks >= 3) {
-      options.push({ value: "quarters-semis-final", label: "Quarters + Semis + Final", description: "3 weeks - Top 8 compete" });
-    }
-    if (weeks >= 4) {
-      options.push({ value: "full-bracket-16", label: "Full 16-Team Bracket", description: "4 weeks - Top 16 compete" });
-    }
-    
-    return options;
   };
+
+  // Get all playoff bracket options (always show all options)
+  const getPlayoffBracketOptions = () => {
+    return [
+      { value: "final-only", label: "Championship Only", description: "1 week - Top 2 face off in the final" },
+      { value: "semifinals-final", label: "Semifinals + Final", description: "2 weeks - Top 4 compete" },
+      { value: "quarters-semis-final", label: "Quarters + Semis + Final", description: "3 weeks - Top 8 compete" },
+      { value: "full-bracket-16", label: "Full 16-Team Bracket", description: "4 weeks - Top 16 compete" },
+    ];
+  };
+
+  // Calculate the effective playoff weeks (based on selection or saved value)
+  const effectivePlayoffWeeks = selectedBracketType 
+    ? getPlayoffWeeksFromBracket(selectedBracketType)
+    : (season?.playoffWeeks || 3);
 
   // Show password prompt if access not granted
   if (adminAccessLoading) {
@@ -580,7 +585,12 @@ export default function Admin() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Playoffs:</span>{" "}
-                  <span className="font-semibold">{season.playoffWeeks} weeks</span>
+                  <span className="font-semibold">
+                    {effectivePlayoffWeeks} week{effectivePlayoffWeeks !== 1 ? 's' : ''}
+                    {effectivePlayoffWeeks !== season.playoffWeeks && (
+                      <span className="text-xs text-muted-foreground ml-1">(pending save)</span>
+                    )}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>{" "}
@@ -593,7 +603,7 @@ export default function Admin() {
                   <Slider
                     id="week-slider"
                     min={1}
-                    max={season.regularSeasonWeeks + season.playoffWeeks}
+                    max={season.regularSeasonWeeks + effectivePlayoffWeeks}
                     step={1}
                     value={[currentWeekSlider]}
                     onValueChange={([value]) => setCurrentWeekSlider(value)}
@@ -923,7 +933,7 @@ export default function Admin() {
                       <div className="space-y-3">
                         <Label>Select Bracket Format</Label>
                         <div className="grid gap-3">
-                          {getPlayoffBracketOptions(season.playoffWeeks).map((option) => (
+                          {getPlayoffBracketOptions().map((option) => (
                             <div
                               key={option.value}
                               className={`p-4 rounded-lg border cursor-pointer transition-colors ${
@@ -962,9 +972,13 @@ export default function Admin() {
                         {!season.playoffLocked && selectedBracketType && selectedBracketType !== season.playoffBracketType && (
                           <Button
                             onClick={() => {
+                              const newPlayoffWeeks = getPlayoffWeeksFromBracket(selectedBracketType);
                               updateSeasonMutation.mutate({
                                 id: season.id,
-                                data: { playoffBracketType: selectedBracketType }
+                                data: { 
+                                  playoffBracketType: selectedBracketType,
+                                  playoffWeeks: newPlayoffWeeks
+                                }
                               });
                             }}
                             disabled={updateSeasonMutation.isPending}
@@ -1011,10 +1025,24 @@ export default function Admin() {
               </Card>
 
               {/* Playoff week matchups */}
-              {season && Array.from({ length: Math.min(season.playoffWeeks, 4) }, (_, i) => season.regularSeasonWeeks + i + 1).map((week) => {
+              {season && Array.from({ length: Math.min(effectivePlayoffWeeks, 4) }, (_, i) => season.regularSeasonWeeks + i + 1).map((week) => {
                 const weekMatchups = allMatchups?.filter(m => m.week === week) || [];
                 const playoffRound = week - season.regularSeasonWeeks;
-                const roundName = playoffRound === 1 ? "Quarterfinals" : playoffRound === 2 ? "Semifinals" : playoffRound === 3 ? "Finals" : `Round ${playoffRound}`;
+                const totalPlayoffWeeks = effectivePlayoffWeeks;
+                
+                // Name rounds based on total playoff weeks and current round
+                let roundName: string;
+                if (playoffRound === totalPlayoffWeeks) {
+                  roundName = "Finals";
+                } else if (playoffRound === totalPlayoffWeeks - 1) {
+                  roundName = "Semifinals";
+                } else if (playoffRound === totalPlayoffWeeks - 2) {
+                  roundName = "Quarterfinals";
+                } else if (playoffRound === totalPlayoffWeeks - 3) {
+                  roundName = "Round of 16";
+                } else {
+                  roundName = `Round ${playoffRound}`;
+                }
                 
                 return (
                   <Card key={week}>
