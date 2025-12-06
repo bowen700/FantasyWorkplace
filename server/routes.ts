@@ -1,10 +1,44 @@
 // API routes for Fantasy Workplace
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./replitAuth";
 import { getAICoachFeedback } from "./openai";
 import type { User, InsertKpi, InsertSeason, InsertKpiData, InsertMatchup, Matchup } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for profile image uploads
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const profileImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `profile-${uniqueSuffix}${ext}`);
+  },
+});
+
+const uploadProfileImage = multer({
+  storage: profileImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed."));
+    }
+  },
+});
 
 interface MatchupWithPlayers extends Matchup {
   player1?: User;
@@ -376,6 +410,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete user" });
     }
   });
+
+  // ============= Profile Image Upload Route =============
+  app.post('/api/upload/profile-image', requireAuth, uploadProfileImage.single('image'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+      
+      // Create the URL to access the uploaded file
+      const imageUrl = `/uploads/${req.file.filename}`;
+      
+      // Update the user's profile image URL
+      const updatedUser = await storage.updateUser(req.authUserId, {
+        profileImageUrl: imageUrl,
+      });
+      
+      res.json({ 
+        message: "Profile image uploaded successfully",
+        imageUrl,
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
+    }
+  });
+
+  // Serve uploaded files statically using express.static (secure)
+  app.use('/uploads', express.static(uploadsDir));
 
   // ============= Season Routes =============
   app.get('/api/seasons/active', requireAuth, async (req, res) => {

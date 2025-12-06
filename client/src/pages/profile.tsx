@@ -9,14 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Award, Trophy, Target, TrendingUp, Zap, Star, Crown, User, Camera } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState, useEffect } from "react";
+import { Award, Trophy, Target, TrendingUp, Zap, Star, Crown, Upload, Loader2 } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
+import { useState, useEffect, useRef } from "react";
 import type { Badge, UserBadge } from "@shared/schema";
 
 interface BadgeWithEarned extends Badge {
   earned?: boolean;
-  earnedAt?: Date;
+  earnedAt?: Date | null;
 }
 
 export default function Profile() {
@@ -25,6 +25,7 @@ export default function Profile() {
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl || "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync state with user data when it changes
   useEffect(() => {
@@ -37,7 +38,17 @@ export default function Profile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; profileImageUrl: string }) => {
-      return await apiRequest("PATCH", `/api/users/${user?.id}/profile`, data);
+      const response = await fetch(`/api/users/${user?.id}/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update profile");
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -45,6 +56,7 @@ export default function Profile() {
         description: "Profile updated successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -54,6 +66,56 @@ export default function Profile() {
       });
     },
   });
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      
+      const response = await fetch("/api/upload/profile-image", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to upload image");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setProfileImageUrl(data.imageUrl);
+      toast({
+        title: "Success",
+        description: "Profile image uploaded successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Image must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      uploadImageMutation.mutate(file);
+    }
+  };
 
   const handleSaveProfile = () => {
     if (!firstName || !lastName) {
@@ -136,20 +198,59 @@ export default function Profile() {
                   {firstName?.charAt(0)}{lastName?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute bottom-0 right-0 h-7 w-7 md:h-8 md:w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover-elevate">
-                <Camera className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />
-              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadImageMutation.isPending}
+                className="absolute bottom-0 right-0 h-7 w-7 md:h-8 md:w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover-elevate disabled:opacity-50"
+                data-testid="button-change-avatar"
+              >
+                {uploadImageMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground animate-spin" />
+                ) : (
+                  <Upload className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleFileSelect}
+                className="hidden"
+                data-testid="input-profile-image-file"
+              />
             </div>
             <div className="flex-1 w-full space-y-2">
-              <Label htmlFor="profileImageUrl">Profile Picture URL</Label>
-              <Input
-                id="profileImageUrl"
-                value={profileImageUrl}
-                onChange={(e) => setProfileImageUrl(e.target.value)}
-                placeholder="https://example.com/avatar.jpg"
-                data-testid="input-profile-image"
-              />
-              <p className="text-xs text-muted-foreground">Enter a URL to your profile picture</p>
+              <Label>Profile Picture</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadImageMutation.isPending}
+                  data-testid="button-upload-image"
+                >
+                  {uploadImageMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Image
+                    </>
+                  )}
+                </Button>
+                {profileImageUrl && (
+                  <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                    Image uploaded
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Upload a JPEG, PNG, GIF, or WebP image (max 5MB)
+              </p>
             </div>
           </div>
 
