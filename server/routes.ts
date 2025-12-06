@@ -896,8 +896,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const allUsers = await storage.getAllUsers();
+      // Filter to only active users (not on waitlist, within activeUserSpots limit)
+      const activeUsers = allUsers.filter(u => 
+        u.salesRepNumber !== null && 
+        u.salesRepNumber <= season.activeUserSpots &&
+        u.role !== 'cio'
+      );
+      
       const leaderboardData = await Promise.all(
-        allUsers.map(async (user) => {
+        activeUsers.map(async (user) => {
           const userMatchups = await storage.getRecentMatchupsByUser(user.id, season.id, 100);
           
           // Only count matchups from previous weeks (exclude current week)
