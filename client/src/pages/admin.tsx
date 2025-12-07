@@ -1139,7 +1139,7 @@ export default function Admin() {
                 
                 return (
                   <Card key={week}>
-                    <CardHeader className="p-4 md:p-6">
+                    <CardHeader className="p-4 md:p-6 flex flex-row items-start justify-between gap-4">
                       <div>
                         <CardTitle className="text-base md:text-lg">
                           Week {week} - {roundName}
@@ -1150,6 +1150,30 @@ export default function Admin() {
                             : "No matchups generated yet"}
                         </CardDescription>
                       </div>
+                      {weekMatchups.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => shuffleMatchupsMutation.mutate(week)}
+                            disabled={shuffleMatchupsMutation.isPending}
+                            title="Shuffle matchups for this week"
+                            data-testid={`button-shuffle-playoff-week-${week}`}
+                          >
+                            <Shuffle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => generateMatchupsMutation.mutate(week)}
+                            disabled={generateMatchupsMutation.isPending}
+                            title="Regenerate matchups for this week"
+                            data-testid={`button-regenerate-playoff-week-${week}`}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
                       {weekMatchups.length > 0 ? (
@@ -1204,6 +1228,17 @@ export default function Admin() {
                       ) : (
                         <div className="text-center py-8 text-muted-foreground">
                           <p>No matchups for this playoff round</p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => generateMatchupsMutation.mutate(week)}
+                            disabled={generateMatchupsMutation.isPending}
+                            data-testid={`button-generate-playoff-week-${week}`}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Generate Matchups
+                          </Button>
                         </div>
                       )}
                     </CardContent>
