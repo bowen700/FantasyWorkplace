@@ -38,7 +38,6 @@ export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newKpiOpen, setNewKpiOpen] = useState(false);
-  const [newSeasonOpen, setNewSeasonOpen] = useState(false);
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [deleteUserOpen, setDeleteUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -59,7 +58,9 @@ export default function Admin() {
   const [tempRegularSeasonWeeks, setTempRegularSeasonWeeks] = useState<number>(9);
   const [editingSeasonName, setEditingSeasonName] = useState<boolean>(false);
   const [tempSeasonName, setTempSeasonName] = useState<string>("");
-  const [newSeasonRegularWeeks, setNewSeasonRegularWeeks] = useState<string>("9");
+  const [editingSeasonDates, setEditingSeasonDates] = useState<boolean>(false);
+  const [tempStartDate, setTempStartDate] = useState<string>("");
+  const [tempEndDate, setTempEndDate] = useState<string>("");
   const [matchupsSubTab, setMatchupsSubTab] = useState<"regular" | "playoffs">("regular");
   const [selectedBracketType, setSelectedBracketType] = useState<string>("");
 
@@ -142,20 +143,6 @@ export default function Admin() {
   });
 
   // Season Mutations
-  const createSeasonMutation = useMutation({
-    mutationFn: async (data: InsertSeason) => {
-      return await apiRequest("POST", "/api/seasons", data);
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Season created successfully" });
-      setNewSeasonOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/seasons"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
   const updateSeasonMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Season> }) => {
       return await apiRequest("PATCH", `/api/seasons/${id}`, data);
@@ -286,20 +273,6 @@ export default function Admin() {
     createKpiMutation.mutate(data);
   };
 
-  const handleSeasonSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const data: InsertSeason = {
-      name: formData.get("name") as string,
-      startDate: new Date(formData.get("startDate") as string),
-      endDate: new Date(formData.get("endDate") as string),
-      regularSeasonWeeks: parseInt(formData.get("regularSeasonWeeks") as string),
-      playoffWeeks: parseInt(formData.get("playoffWeeks") as string),
-      currentWeek: 1,
-      isActive: true,
-    };
-    createSeasonMutation.mutate(data);
-  };
 
   const handleAdminPasswordSubmit = () => {
     verifyAdminPasswordMutation.mutate(adminPassword);
@@ -328,6 +301,12 @@ export default function Admin() {
     }
     if (season?.name) {
       setTempSeasonName(season.name);
+    }
+    if (season?.startDate) {
+      setTempStartDate(new Date(season.startDate).toISOString().split('T')[0]);
+    }
+    if (season?.endDate) {
+      setTempEndDate(new Date(season.endDate).toISOString().split('T')[0]);
     }
     if (season?.playoffBracketType) {
       setSelectedBracketType(season.playoffBracketType);
@@ -423,68 +402,6 @@ export default function Admin() {
       <div className="space-y-4 md:space-y-6">
         <div className="flex flex-col sm:flex-row justify-between gap-2 sm:items-center">
           <h2 className="font-display text-lg md:text-2xl font-bold">Season Management</h2>
-          <Dialog open={newSeasonOpen} onOpenChange={setNewSeasonOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-create-season">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Season
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Season</DialogTitle>
-                <DialogDescription>Set up a new competition period</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSeasonSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="season-name">Name</Label>
-                  <Input id="season-name" name="name" required data-testid="input-season-name" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input id="startDate" name="startDate" type="date" required data-testid="input-start-date" />
-                  </div>
-                  <div>
-                    <Label htmlFor="endDate">End Date</Label>
-                    <Input id="endDate" name="endDate" type="date" required data-testid="input-end-date" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="regularSeasonWeeks">Regular Season Weeks</Label>
-                    <Select value={newSeasonRegularWeeks} onValueChange={setNewSeasonRegularWeeks}>
-                      <SelectTrigger id="regularSeasonWeeks" data-testid="select-regular-weeks-create">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 8 }, (_, i) => i + 6).map((weeks) => (
-                          <SelectItem key={weeks} value={weeks.toString()}>
-                            {weeks} weeks
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <input type="hidden" name="regularSeasonWeeks" value={newSeasonRegularWeeks} />
-                  </div>
-                  <div>
-                    <Label htmlFor="playoffWeeks">Playoff Weeks</Label>
-                    <Input
-                      id="playoffWeeks"
-                      name="playoffWeeks"
-                      type="number"
-                      defaultValue="4"
-                      required
-                      data-testid="input-playoff-weeks"
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" data-testid="button-submit-season">
-                  Create Season
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
         </div>
 
         {season && (
@@ -541,10 +458,70 @@ export default function Admin() {
                   </>
                 )}
               </div>
-              <CardDescription>
-                {new Date(season.startDate).toLocaleDateString()} -{" "}
-                {new Date(season.endDate).toLocaleDateString()}
-              </CardDescription>
+              {editingSeasonDates ? (
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <Input
+                    type="date"
+                    value={tempStartDate}
+                    onChange={(e) => setTempStartDate(e.target.value)}
+                    className="w-[140px]"
+                    data-testid="input-edit-start-date"
+                  />
+                  <span className="text-muted-foreground">-</span>
+                  <Input
+                    type="date"
+                    value={tempEndDate}
+                    onChange={(e) => setTempEndDate(e.target.value)}
+                    className="w-[140px]"
+                    data-testid="input-edit-end-date"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (!season || !tempStartDate || !tempEndDate) return;
+                      updateSeasonMutation.mutate({ 
+                        id: season.id, 
+                        data: { 
+                          startDate: new Date(tempStartDate),
+                          endDate: new Date(tempEndDate)
+                        } 
+                      });
+                      setEditingSeasonDates(false);
+                    }}
+                    disabled={updateSeasonMutation.isPending || !tempStartDate || !tempEndDate}
+                    data-testid="button-save-season-dates"
+                  >
+                    {updateSeasonMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setTempStartDate(new Date(season.startDate).toISOString().split('T')[0]);
+                      setTempEndDate(new Date(season.endDate).toISOString().split('T')[0]);
+                      setEditingSeasonDates(false);
+                    }}
+                    data-testid="button-cancel-season-dates"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <CardDescription>
+                    {new Date(season.startDate).toLocaleDateString()} -{" "}
+                    {new Date(season.endDate).toLocaleDateString()}
+                  </CardDescription>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setEditingSeasonDates(true)}
+                    data-testid="button-edit-season-dates"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4 md:space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm">
