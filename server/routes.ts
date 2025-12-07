@@ -10,6 +10,18 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+// Password settings - read from environment variables with defaults
+// In-memory cache allows runtime updates without restart (persists until server restart)
+interface AppSettings {
+  teamPassword: string;
+  adminPassword: string;
+}
+
+let appSettings: AppSettings = {
+  teamPassword: process.env.TEAM_PASSWORD || "$@le$te@m2026",
+  adminPassword: process.env.ADMIN_PASSWORD || "accessgranted!",
+};
+
 // Configure multer for profile image uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -125,9 +137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/verify-password', async (req: any, res) => {
     try {
       const { password } = req.body;
-      const TEAM_PASSWORD = "$@le$te@m2026";
       
-      if (password === TEAM_PASSWORD) {
+      if (password === appSettings.teamPassword) {
         req.session.passwordVerified = true;
         await req.session.save();
         res.json({ success: true });
@@ -264,9 +275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/verify-admin-password', async (req: any, res) => {
     try {
       const { password } = req.body;
-      const ADMIN_PASSWORD = "accessgranted!";
       
-      if (password === ADMIN_PASSWORD) {
+      if (password === appSettings.adminPassword) {
         req.session.adminAccessGranted = true;
         await req.session.save();
         res.json({ success: true });
@@ -276,6 +286,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying admin password:", error);
       res.status(500).json({ message: "Failed to verify password" });
+    }
+  });
+
+  // Update team password (admin only) - requires confirmation
+  app.patch('/api/settings/team-password', requireAuth, requireAdminPassword, async (req: any, res) => {
+    try {
+      const { newPassword, confirmPassword } = req.body;
+      
+      if (!newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "New password and confirmation are required" });
+      }
+      
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+      
+      if (typeof newPassword !== 'string' || newPassword.length < 4) {
+        return res.status(400).json({ message: "Password must be at least 4 characters" });
+      }
+      
+      appSettings.teamPassword = newPassword;
+      
+      res.json({ message: "Team password updated successfully" });
+    } catch (error) {
+      console.error("Error updating team password:", error);
+      res.status(500).json({ message: "Failed to update team password" });
+    }
+  });
+
+  // Update admin password (admin only) - requires current password verification
+  app.patch('/api/settings/admin-password', requireAuth, requireAdminPassword, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+      
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "Current password, new password, and confirmation are required" });
+      }
+      
+      // Verify current password
+      if (currentPassword !== appSettings.adminPassword) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "New passwords do not match" });
+      }
+      
+      if (typeof newPassword !== 'string' || newPassword.length < 4) {
+        return res.status(400).json({ message: "Password must be at least 4 characters" });
+      }
+      
+      appSettings.adminPassword = newPassword;
+      
+      res.json({ message: "Admin password updated successfully" });
+    } catch (error) {
+      console.error("Error updating admin password:", error);
+      res.status(500).json({ message: "Failed to update admin password" });
     }
   });
 

@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle, Trophy } from "lucide-react";
+import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle, Trophy, Eye, EyeOff, Lock } from "lucide-react";
 import type { Kpi, Season, InsertKpi, InsertSeason, User } from "@shared/schema";
 
 interface MatchupWithPlayers {
@@ -64,6 +64,12 @@ export default function Admin() {
   const [matchupsSubTab, setMatchupsSubTab] = useState<"regular" | "playoffs">("regular");
   const [selectedBracketType, setSelectedBracketType] = useState<string>("");
   const [confirmBracketSaveOpen, setConfirmBracketSaveOpen] = useState<boolean>(false);
+  const [newTeamPassword, setNewTeamPassword] = useState<string>("");
+  const [confirmTeamPassword, setConfirmTeamPassword] = useState<string>("");
+  const [currentAdminPassword, setCurrentAdminPassword] = useState<string>("");
+  const [newAdminPasswordInput, setNewAdminPasswordInput] = useState<string>("");
+  const [confirmAdminPasswordInput, setConfirmAdminPasswordInput] = useState<string>("");
+  const [showPasswordFields, setShowPasswordFields] = useState<{ team: boolean; admin: boolean }>({ team: false, admin: false });
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -254,6 +260,37 @@ export default function Admin() {
       setDeleteUserOpen(false);
       setSelectedUser(null);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateTeamPasswordMutation = useMutation({
+    mutationFn: async (data: { newPassword: string; confirmPassword: string }) => {
+      return await apiRequest("PATCH", "/api/settings/team-password", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Team password updated successfully" });
+      setNewTeamPassword("");
+      setConfirmTeamPassword("");
+      setShowPasswordFields(prev => ({ ...prev, team: false }));
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateAdminPasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+      return await apiRequest("PATCH", "/api/settings/admin-password", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Admin password updated successfully" });
+      setCurrentAdminPassword("");
+      setNewAdminPasswordInput("");
+      setConfirmAdminPasswordInput("");
+      setShowPasswordFields(prev => ({ ...prev, admin: false }));
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -602,6 +639,140 @@ export default function Admin() {
             </CardContent>
           </Card>
         )}
+
+        {/* Security Settings Card */}
+        <Card>
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Security Settings
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Manage team access and admin passwords
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-6">
+            {/* Team Password Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Team Password</Label>
+                  <p className="text-xs text-muted-foreground">Password for team members to access the app</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPasswordFields(prev => ({ ...prev, team: !prev.team }))}
+                  data-testid="button-toggle-team-password"
+                >
+                  {showPasswordFields.team ? "Cancel" : "Change"}
+                </Button>
+              </div>
+              {showPasswordFields.team && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <div>
+                    <Label htmlFor="new-team-password">New Password</Label>
+                    <Input
+                      id="new-team-password"
+                      type="password"
+                      value={newTeamPassword}
+                      onChange={(e) => setNewTeamPassword(e.target.value)}
+                      placeholder="Enter new team password"
+                      data-testid="input-new-team-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-team-password">Confirm Password</Label>
+                    <Input
+                      id="confirm-team-password"
+                      type="password"
+                      value={confirmTeamPassword}
+                      onChange={(e) => setConfirmTeamPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      data-testid="input-confirm-team-password"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => updateTeamPasswordMutation.mutate({
+                      newPassword: newTeamPassword,
+                      confirmPassword: confirmTeamPassword,
+                    })}
+                    disabled={updateTeamPasswordMutation.isPending || !newTeamPassword || !confirmTeamPassword}
+                    data-testid="button-save-team-password"
+                  >
+                    {updateTeamPasswordMutation.isPending ? "Saving..." : "Update Team Password"}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Admin Password Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Admin Password</Label>
+                  <p className="text-xs text-muted-foreground">Password for accessing admin dashboard</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPasswordFields(prev => ({ ...prev, admin: !prev.admin }))}
+                  data-testid="button-toggle-admin-password"
+                >
+                  {showPasswordFields.admin ? "Cancel" : "Change"}
+                </Button>
+              </div>
+              {showPasswordFields.admin && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <div>
+                    <Label htmlFor="current-admin-password">Current Password</Label>
+                    <Input
+                      id="current-admin-password"
+                      type="password"
+                      value={currentAdminPassword}
+                      onChange={(e) => setCurrentAdminPassword(e.target.value)}
+                      placeholder="Enter current admin password"
+                      data-testid="input-current-admin-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-admin-password">New Password</Label>
+                    <Input
+                      id="new-admin-password"
+                      type="password"
+                      value={newAdminPasswordInput}
+                      onChange={(e) => setNewAdminPasswordInput(e.target.value)}
+                      placeholder="Enter new admin password"
+                      data-testid="input-new-admin-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-admin-password">Confirm New Password</Label>
+                    <Input
+                      id="confirm-admin-password"
+                      type="password"
+                      value={confirmAdminPasswordInput}
+                      onChange={(e) => setConfirmAdminPasswordInput(e.target.value)}
+                      placeholder="Confirm new password"
+                      data-testid="input-confirm-admin-password"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => updateAdminPasswordMutation.mutate({
+                      currentPassword: currentAdminPassword,
+                      newPassword: newAdminPasswordInput,
+                      confirmPassword: confirmAdminPasswordInput,
+                    })}
+                    disabled={updateAdminPasswordMutation.isPending || !currentAdminPassword || !newAdminPasswordInput || !confirmAdminPasswordInput}
+                    data-testid="button-save-admin-password"
+                  >
+                    {updateAdminPasswordMutation.isPending ? "Saving..." : "Update Admin Password"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="kpis" className="space-y-4 md:space-y-6">
