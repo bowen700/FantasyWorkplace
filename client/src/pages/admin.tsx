@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle, Lock, Unlock, Trophy } from "lucide-react";
+import { Plus, Save, Trash2, Play, Settings, Edit, UserX, Users, RefreshCw, ArrowLeftRight, Shuffle, Trophy } from "lucide-react";
 import type { Kpi, Season, InsertKpi, InsertSeason, User } from "@shared/schema";
 
 interface MatchupWithPlayers {
@@ -63,6 +63,7 @@ export default function Admin() {
   const [tempEndDate, setTempEndDate] = useState<string>("");
   const [matchupsSubTab, setMatchupsSubTab] = useState<"regular" | "playoffs">("regular");
   const [selectedBracketType, setSelectedBracketType] = useState<string>("");
+  const [confirmBracketSaveOpen, setConfirmBracketSaveOpen] = useState<boolean>(false);
 
   const { data: adminAccess, isLoading: adminAccessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/auth/check-admin-access"],
@@ -881,27 +882,14 @@ export default function Admin() {
             <TabsContent value="playoffs" className="space-y-4 mt-4">
               <Card>
                 <CardHeader className="p-4 md:p-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base md:text-lg flex items-center gap-2">
-                        <Trophy className="h-5 w-5 text-primary" />
-                        Playoff Bracket Configuration
-                      </CardTitle>
-                      <CardDescription className="text-sm">
-                        Select tournament format based on {season?.playoffWeeks || 0} playoff weeks
-                      </CardDescription>
-                    </div>
-                    {season?.playoffLocked ? (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Lock className="h-3 w-3" />
-                        Locked
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Unlock className="h-3 w-3" />
-                        Unlocked
-                      </Badge>
-                    )}
+                  <div>
+                    <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-primary" />
+                      Playoff Bracket Configuration
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      Select tournament format based on {season?.playoffWeeks || 0} playoff weeks
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
@@ -917,12 +905,8 @@ export default function Admin() {
                                 selectedBracketType === option.value
                                   ? "border-primary bg-primary/5"
                                   : "hover-elevate"
-                              } ${season.playoffLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                              onClick={() => {
-                                if (!season.playoffLocked) {
-                                  setSelectedBracketType(option.value);
-                                }
-                              }}
+                              }`}
+                              onClick={() => setSelectedBracketType(option.value)}
                               data-testid={`bracket-option-${option.value}`}
                             >
                               <div className="flex items-center gap-3">
@@ -946,18 +930,9 @@ export default function Admin() {
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                        {!season.playoffLocked && selectedBracketType && selectedBracketType !== season.playoffBracketType && (
+                        {selectedBracketType && selectedBracketType !== season.playoffBracketType && (
                           <Button
-                            onClick={() => {
-                              const newPlayoffWeeks = getPlayoffWeeksFromBracket(selectedBracketType);
-                              updateSeasonMutation.mutate({
-                                id: season.id,
-                                data: { 
-                                  playoffBracketType: selectedBracketType,
-                                  playoffWeeks: newPlayoffWeeks
-                                }
-                              });
-                            }}
+                            onClick={() => setConfirmBracketSaveOpen(true)}
                             disabled={updateSeasonMutation.isPending}
                             data-testid="button-save-bracket"
                           >
@@ -965,37 +940,7 @@ export default function Admin() {
                             {updateSeasonMutation.isPending ? "Saving..." : "Save Bracket Selection"}
                           </Button>
                         )}
-                        
-                        <Button
-                          variant={season.playoffLocked ? "destructive" : "outline"}
-                          onClick={() => {
-                            updateSeasonMutation.mutate({
-                              id: season.id,
-                              data: { playoffLocked: !season.playoffLocked }
-                            });
-                          }}
-                          disabled={updateSeasonMutation.isPending || (!season.playoffBracketType && !season.playoffLocked)}
-                          data-testid="button-toggle-lock"
-                        >
-                          {season.playoffLocked ? (
-                            <>
-                              <Unlock className="h-4 w-4 mr-2" />
-                              Unlock Playoffs
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="h-4 w-4 mr-2" />
-                              Lock Playoffs
-                            </>
-                          )}
-                        </Button>
                       </div>
-
-                      {season.playoffLocked && (
-                        <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-                          Playoffs are locked. The tournament bracket cannot be changed until unlocked.
-                        </p>
-                      )}
                     </>
                   )}
                 </CardContent>
@@ -1069,21 +1014,19 @@ export default function Admin() {
                                   </Avatar>
                                 </div>
                               </div>
-                              {!season.playoffLocked && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setSelectedMatchup(matchup);
-                                    setNewPlayer1Id(matchup.player1Id);
-                                    setNewPlayer2Id(matchup.player2Id);
-                                    setEditMatchupOpen(true);
-                                  }}
-                                  data-testid={`button-edit-playoff-matchup-${matchup.id}`}
-                                >
-                                  <ArrowLeftRight className="h-4 w-4" />
-                                </Button>
-                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedMatchup(matchup);
+                                  setNewPlayer1Id(matchup.player1Id);
+                                  setNewPlayer2Id(matchup.player2Id);
+                                  setEditMatchupOpen(true);
+                                }}
+                                data-testid={`button-edit-playoff-matchup-${matchup.id}`}
+                              >
+                                <ArrowLeftRight className="h-4 w-4" />
+                              </Button>
                             </div>
                           ))}
                         </div>
@@ -1168,6 +1111,38 @@ export default function Admin() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Confirm Bracket Save Dialog */}
+          <AlertDialog open={confirmBracketSaveOpen} onOpenChange={setConfirmBracketSaveOpen}>
+            <AlertDialogContent data-testid="dialog-confirm-bracket-save">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Playoff Changes</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to save these changes to the playoff bracket configuration? This will update the tournament structure.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-bracket-save">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (!season || !selectedBracketType) return;
+                    const newPlayoffWeeks = getPlayoffWeeksFromBracket(selectedBracketType);
+                    updateSeasonMutation.mutate({
+                      id: season.id,
+                      data: { 
+                        playoffBracketType: selectedBracketType,
+                        playoffWeeks: newPlayoffWeeks
+                      }
+                    });
+                    setConfirmBracketSaveOpen(false);
+                  }}
+                  data-testid="button-confirm-bracket-save"
+                >
+                  Save Changes
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* Users Tab */}
