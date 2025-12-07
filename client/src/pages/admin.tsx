@@ -165,7 +165,7 @@ export default function Admin() {
 
   const generateMatchupsMutation = useMutation({
     mutationFn: async (week: number) => {
-      return await apiRequest("POST", "/api/matchups/generate", { week });
+      return await apiRequest("POST", "/api/matchups/generate", { week, overwrite: true });
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Matchups generated successfully" });
