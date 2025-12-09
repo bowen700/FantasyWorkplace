@@ -1,4 +1,4 @@
-Fantasy Workplace (AKA Duelz)
+FANTASY WORKPLACE (aka DUELZ)
 
 
 
